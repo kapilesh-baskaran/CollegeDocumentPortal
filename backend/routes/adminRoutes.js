@@ -244,7 +244,8 @@ router.put("/requests/:id/status", authMiddleware, async (req, res) => {
     if (status === "Document Ready") {
       try {
         // Construct the verification URL pointing to the portal's verification page
-        const verificationUrl = `${req.protocol}://${req.get("host")}/verify/${updatedRequest.request_id}`;
+        const frontendBase = process.env.FRONTEND_URL || `${req.protocol}://${req.get("host")}`;
+        const verificationUrl = `${frontendBase}/verify/${updatedRequest.request_id}`;
         
         qrDataUrl = await QRCode.toDataURL(verificationUrl, {
           errorCorrectionLevel: "H",
