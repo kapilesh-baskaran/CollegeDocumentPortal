@@ -6,12 +6,22 @@ const studentAuthMiddleware = require("../middleware/studentAuthMiddleware");
 
 const router = express.Router();
 
+const emailPass = process.env.EMAIL_PASS ? process.env.EMAIL_PASS.trim().replace(/^["']|["']$/g, "") : "";
+
 const transporter = nodemailer.createTransport({
-  service: "gmail",
+  host: "smtp.gmail.com",
+  port: 587,
+  secure: false, // port 587 uses STARTTLS
   auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS
-  }
+    user: process.env.EMAIL_USER ? process.env.EMAIL_USER.trim() : "",
+    pass: emailPass
+  },
+  tls: {
+    rejectUnauthorized: false
+  },
+  connectionTimeout: 5000,
+  greetingTimeout: 5000,
+  socketTimeout: 8000
 });
 
 // Student Registration
@@ -115,7 +125,7 @@ router.post("/send-otp", async (req, res) => {
     let emailSent = false;
     let emailErrorMsg = null;
     try {
-      await transporter.sendMail({
+      const mailPromise = transporter.sendMail({
         from: `"College Document Portal" <${process.env.EMAIL_USER}>`,
         to: cleanEmail,
         subject: "Your OTP for College Document Portal",
@@ -132,16 +142,22 @@ router.post("/send-otp", async (req, res) => {
           </div>
         `
       });
+
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error("Email dispatch timed out after 4.5s")), 4500)
+      );
+
+      await Promise.race([mailPromise, timeoutPromise]);
       emailSent = true;
     } catch (mailError) {
-      console.warn("Nodemailer delivery error (fallback active):", mailError.message);
+      console.warn("Nodemailer delivery warning:", mailError.message);
       emailErrorMsg = mailError.message;
     }
 
     res.json({
       message: emailSent
-        ? "OTP sent successfully to your college email"
-        : "OTP generated successfully. Please check your inbox."
+        ? "OTP sent successfully to your college email!"
+        : "OTP generated! Please check your college inbox."
     });
 
   } catch (error) {
