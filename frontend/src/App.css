@@ -1,0 +1,6 @@
+/* College Document Portal Application Styles */
+#root {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
