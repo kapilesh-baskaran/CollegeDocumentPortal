@@ -57,9 +57,15 @@ export default function Login() {
       });
       startCooldown();
     } catch (err) {
+      console.error("Login OTP error:", err);
+      const errorMsg =
+        err.response?.data?.message ||
+        (!err.response
+          ? "Unable to reach server. Please check your backend status or network connection."
+          : "Failed to send OTP. Please check your email.");
       setMessage({
         type: "error",
-        text: err.response?.data?.message || "Failed to send OTP. Please check your email."
+        text: errorMsg
       });
     } finally {
       setLoading(false);

@@ -71,9 +71,15 @@ export default function StudentRegister() {
       }, 700);
 
     } catch (error) {
+      console.error("Student registration error:", error);
+      const errorMsg =
+        error.response?.data?.message ||
+        (!error.response
+          ? "Unable to reach server. Please check your backend status or network connection."
+          : "Registration failed. Please check your details.");
       setMessage({
         type: "error",
-        text: error.response?.data?.message || "Registration failed. Please check your details."
+        text: errorMsg
       });
     } finally {
       setLoading(false);

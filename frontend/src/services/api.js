@@ -1,7 +1,22 @@
 import axios from "axios";
 
+let rawUrl = (import.meta.env.VITE_API_URL || "").trim();
+
+// If not provided in env, default to localhost for dev
+let baseURL = rawUrl || "http://localhost:5000/api";
+
+// Auto-sanitize: remove trailing slash
+if (baseURL.endsWith("/")) {
+  baseURL = baseURL.slice(0, -1);
+}
+
+// Auto-append /api if user provided Render domain without /api (e.g. https://service.onrender.com)
+if (!baseURL.endsWith("/api") && !baseURL.includes("/api")) {
+  baseURL = `${baseURL}/api`;
+}
+
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || "http://localhost:5000/api",
+  baseURL,
   headers: {
     "Content-Type": "application/json"
   }
