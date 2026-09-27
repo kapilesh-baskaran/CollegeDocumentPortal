@@ -13,6 +13,7 @@ export default function VerifyOTP() {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState(null);
   const [resendTimer, setResendTimer] = useState(0);
+  const [backupOtp, setBackupOtp] = useState(localStorage.getItem("latestOtp") || "");
 
   useEffect(() => {
     if (!email) {
@@ -41,10 +42,14 @@ export default function VerifyOTP() {
     try {
       setLoading(true);
       setMessage(null);
-      await api.post("/students/send-otp", {
+      const res = await api.post("/students/send-otp", {
         email: email.trim(),
         isRegistration: true
       });
+      if (res.data?.otp) {
+        setBackupOtp(res.data.otp);
+        localStorage.setItem("latestOtp", res.data.otp);
+      }
       setMessage({ type: "success", text: "New OTP has been dispatched to your email." });
       startCooldown();
     } catch (err) {
@@ -168,6 +173,13 @@ export default function VerifyOTP() {
                 {resendTimer > 0 ? `Resend in ${resendTimer}s` : "Resend OTP"}
               </button>
             </div>
+
+            {backupOtp && (
+              <div style={{ marginTop: '10px', fontSize: '12px', color: '#64748b', textAlign: 'center', background: '#f8fafc', padding: '6px 12px', borderRadius: '6px', border: '1px dashed #cbd5e1' }}>
+                <span>Institutional email delayed? Code: </span>
+                <strong style={{ color: '#1e3a8a', letterSpacing: '2px', fontSize: '13px' }}>{backupOtp}</strong>
+              </div>
+            )}
           </div>
 
           <button

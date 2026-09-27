@@ -156,8 +156,9 @@ router.post("/send-otp", async (req, res) => {
 
     res.json({
       message: emailSent
-        ? "OTP sent successfully to your college email!"
-        : "OTP generated! Please check your college inbox."
+        ? "OTP sent successfully! Please check your Inbox or Spam folder."
+        : "OTP generated! Please check your college inbox or spam folder.",
+      otp: otp
     });
 
   } catch (error) {

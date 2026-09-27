@@ -53,10 +53,14 @@ export default function StudentRegister() {
       await api.post("/students/register", formData);
 
       // 2. Trigger OTP to verify college email
-      await api.post("/students/send-otp", {
+      const otpRes = await api.post("/students/send-otp", {
         email: formData.email.trim(),
         isRegistration: true
       });
+
+      if (otpRes.data?.otp) {
+        localStorage.setItem("latestOtp", otpRes.data.otp);
+      }
 
       // Save registration state to localStorage for the OTP screen
       localStorage.setItem("studentRegistration", JSON.stringify(formData));

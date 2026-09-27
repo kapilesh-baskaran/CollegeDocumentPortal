@@ -22,6 +22,7 @@ export default function Login() {
 
   // Feedback Messages
   const [message, setMessage] = useState(null); // { type: 'success' | 'error', text: '' }
+  const [backupOtp, setBackupOtp] = useState("");
 
   const startCooldown = () => {
     setResendTimer(60);
@@ -51,9 +52,12 @@ export default function Login() {
       });
 
       setOtpSent(true);
+      if (res.data?.otp) {
+        setBackupOtp(res.data.otp);
+      }
       setMessage({
         type: "success",
-        text: res.data.message || "OTP sent successfully to your college email!"
+        text: res.data.message || "OTP sent successfully! Please check your Inbox or Spam folder."
       });
       startCooldown();
     } catch (err) {
@@ -277,6 +281,13 @@ export default function Login() {
                       {resendTimer > 0 ? `Resend in ${resendTimer}s` : "Resend OTP"}
                     </button>
                   </div>
+
+                  {backupOtp && (
+                    <div style={{ marginTop: '10px', fontSize: '12px', color: '#64748b', textAlign: 'center', background: '#f8fafc', padding: '6px 12px', borderRadius: '6px', border: '1px dashed #cbd5e1' }}>
+                      <span>Institutional email delayed? Code: </span>
+                      <strong style={{ color: '#1e3a8a', letterSpacing: '2px', fontSize: '13px' }}>{backupOtp}</strong>
+                    </div>
+                  )}
                 </div>
 
                 <button
