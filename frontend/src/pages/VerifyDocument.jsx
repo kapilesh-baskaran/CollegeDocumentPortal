@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
-import { ShieldCheck, ShieldAlert, Award, Calendar, CheckCircle2, User, BookOpen, Clock, ArrowLeft, Building2 } from "lucide-react";
+import { ShieldCheck, ShieldAlert, Award, Calendar, CheckCircle2, User, BookOpen, Clock, ArrowLeft, Building2, Lock, Eye, Copy, Check } from "lucide-react";
 import api from "../services/api";
 
 export default function VerifyDocument() {
@@ -8,6 +8,7 @@ export default function VerifyDocument() {
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState(null);
   const [error, setError] = useState(null);
+  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     async function verify() {
@@ -156,6 +157,49 @@ export default function VerifyDocument() {
                 </span>
               </div>
             </div>
+
+            {/* Scan Count & Cryptographic Fingerprint */}
+            <div className="verify-meta-strip">
+              <div className="verify-stat-pill">
+                <Eye size={14} className="text-primary" />
+                <span>Verified <strong>{data.document.scanCount || 1}</strong> time(s)</span>
+              </div>
+              <div className="verify-stat-pill">
+                <Clock size={14} className="text-muted" />
+                <span>Audited: {new Date().toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })}</span>
+              </div>
+            </div>
+
+            {data.document.verificationHash && (
+              <div className="verify-hash-box">
+                <div className="verify-hash-top">
+                  <span className="verify-hash-title">
+                    <Lock size={13} /> SHA-256 Cryptographic Fingerprint
+                  </span>
+                  <button
+                    className="btn-link text-xs flex items-center gap-1"
+                    onClick={() => {
+                      navigator.clipboard.writeText(data.document.verificationHash);
+                      setCopied(true);
+                      setTimeout(() => setCopied(false), 2000);
+                    }}
+                  >
+                    {copied ? (
+                      <>
+                        <Check size={12} className="text-success" /> Copied!
+                      </>
+                    ) : (
+                      <>
+                        <Copy size={12} /> Copy Hash
+                      </>
+                    )}
+                  </button>
+                </div>
+                <div className="verify-hash-value font-mono text-xs">
+                  {data.document.verificationHash}
+                </div>
+              </div>
+            )}
 
             <div className="verify-security-note">
               <p>

@@ -102,7 +102,10 @@ router.get("/verify/:requestId", async (req, res) => {
         d.id AS document_id,
         d.qr_code,
         d.file_url,
-        d.generated_at
+        d.generated_at,
+        dr.verification_hash,
+        dr.scan_count,
+        dr.last_scanned_at
       FROM document_requests dr
       JOIN students s ON dr.student_id = s.id
       LEFT JOIN documents d ON d.request_id = dr.id
@@ -119,6 +122,25 @@ router.get("/verify/:requestId", async (req, res) => {
 
     const doc = result.rows[0];
     const isReady = doc.status === "Document Ready" || doc.status === "Approved";
+
+    // Increment scan counter in background
+    let newScanCount = (doc.scan_count || 0) + 1;
+    let vHash = doc.verification_hash;
+    if (!vHash) {
+      const crypto = require("crypto");
+      vHash = crypto.createHash("sha256").update(`PSNA-${doc.id}-${doc.register_no}-${doc.document_type}`).digest("hex");
+    }
+
+    try {
+      await pool.query(
+        `UPDATE document_requests
+         SET scan_count = $1, last_scanned_at = CURRENT_TIMESTAMP, verification_hash = COALESCE(verification_hash, $2)
+         WHERE id = $3`,
+        [newScanCount, vHash, doc.id]
+      );
+    } catch (scErr) {
+      console.warn("Scan count increment warning:", scErr.message);
+    }
 
     res.json({
       verified: isReady,
@@ -140,7 +162,10 @@ router.get("/verify/:requestId", async (req, res) => {
         },
         issuingAuthority: "Office of Academic Affairs & Administration",
         issuedDate: doc.generated_at || doc.updated_at,
-        createdAt: doc.created_at
+        createdAt: doc.created_at,
+        verificationHash: vHash,
+        scanCount: newScanCount,
+        lastScannedAt: new Date()
       }
     });
 

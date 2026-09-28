@@ -19,7 +19,14 @@ import {
   GraduationCap,
   Bus,
   Home,
-  FileText
+  FileText,
+  Download,
+  Sun,
+  Moon,
+  Settings,
+  MessageSquare,
+  CheckSquare,
+  Square
 } from "lucide-react";
 import api from "../services/api";
 import DocumentModal from "../components/DocumentModal";
@@ -52,6 +59,44 @@ export default function AdminDashboard() {
   const [selectedDocType, setSelectedDocType] = useState("All");
   const [urgencyFilter, setUrgencyFilter] = useState("all"); // 'all' | 'urgent' | 'overdue'
 
+  // Dark / Light Theme Toggle
+  const [theme, setTheme] = useState(() => {
+    return localStorage.getItem("portal_theme") || "light";
+  });
+
+  useEffect(() => {
+    document.documentElement.setAttribute("data-theme", theme);
+    localStorage.setItem("portal_theme", theme);
+  }, [theme]);
+
+  const toggleTheme = () => {
+    setTheme((prev) => (prev === "dark" ? "light" : "dark"));
+  };
+
+  // Bulk Multi-Select Processing State
+  const [selectedIds, setSelectedIds] = useState([]);
+  const [bulkProcessing, setBulkProcessing] = useState(false);
+
+  // CSV Export State
+  const [exportingCsv, setExportingCsv] = useState(false);
+
+  // Institutional Settings Modal (Signatory & Seal) State
+  const [showSettingsModal, setShowSettingsModal] = useState(false);
+  const [settingsForm, setSettingsForm] = useState({
+    signatory_name: "Dr. D. Vasudevan, M.E., Ph.D.",
+    signatory_designation: "Principal & Head of Institution",
+    seal_title: "PSNA College of Engineering and Technology (Autonomous)"
+  });
+  const [savingSettings, setSavingSettings] = useState(false);
+  const [settingsFeedback, setSettingsFeedback] = useState(null);
+
+  // Clarification Chat State
+  const [chatRequest, setChatRequest] = useState(null);
+  const [chatMessages, setChatMessages] = useState([]);
+  const [chatInput, setChatInput] = useState("");
+  const [loadingChat, setLoadingChat] = useState(false);
+  const [sendingChat, setSendingChat] = useState(false);
+
   // Action Drawer / Modal
   const [activeRequest, setActiveRequest] = useState(null);
   const [newStatus, setNewStatus] = useState("");
@@ -61,6 +106,132 @@ export default function AdminDashboard() {
 
   // Preview Modal
   const [previewDoc, setPreviewDoc] = useState(null);
+
+  const toggleSelectAll = () => {
+    if (selectedIds.length === requests.length) {
+      setSelectedIds([]);
+    } else {
+      setSelectedIds(requests.map((r) => r.id));
+    }
+  };
+
+  const toggleSelectRow = (id) => {
+    setSelectedIds((prev) =>
+      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
+    );
+  };
+
+  const handleBulkUpdate = async (statusToSet) => {
+    if (selectedIds.length === 0 || bulkProcessing) return;
+    try {
+      setBulkProcessing(true);
+      await api.post("/admin/requests/bulk-status", {
+        ids: selectedIds,
+        status: statusToSet,
+        remarks: `Bulk processed and authorized as ${statusToSet} by administrator.`
+      });
+      setSelectedIds([]);
+      await fetchRequests();
+      await fetchStats();
+    } catch (err) {
+      alert(err.response?.data?.message || "Failed to perform bulk update.");
+    } finally {
+      setBulkProcessing(false);
+    }
+  };
+
+  const handleExportCsv = async () => {
+    try {
+      setExportingCsv(true);
+      const params = {};
+      if (selectedStatus !== "All") params.status = selectedStatus;
+      if (selectedDocType !== "All") params.documentType = selectedDocType;
+      if (search.trim()) params.search = search.trim();
+
+      const res = await api.get("/admin/requests/export-csv", {
+        params,
+        responseType: "blob"
+      });
+
+      const blob = new Blob([res.data], { type: "text/csv;charset=utf-8;" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.setAttribute("download", `PSNA_Document_Requests_${Date.now()}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error("Export CSV failed:", err);
+      alert("Failed to export CSV. Please try again.");
+    } finally {
+      setExportingCsv(false);
+    }
+  };
+
+  const openSettings = async () => {
+    setShowSettingsModal(true);
+    setSettingsFeedback(null);
+    try {
+      const res = await api.get("/admin/settings");
+      if (res.data?.settings) {
+        setSettingsForm((prev) => ({ ...prev, ...res.data.settings }));
+      }
+    } catch (err) {
+      console.warn("Failed to load settings:", err);
+    }
+  };
+
+  const handleSaveSettings = async (e) => {
+    e.preventDefault();
+    try {
+      setSavingSettings(true);
+      setSettingsFeedback(null);
+      await api.post("/admin/settings", { settings: settingsForm });
+      setSettingsFeedback({ type: "success", text: "Institutional signature & seal settings saved!" });
+      setTimeout(() => setShowSettingsModal(false), 1200);
+    } catch (err) {
+      setSettingsFeedback({ type: "error", text: err.response?.data?.message || "Failed to save settings." });
+    } finally {
+      setSavingSettings(false);
+    }
+  };
+
+  const openAdminChat = async (req) => {
+    setChatRequest(req);
+    setChatMessages([]);
+    setChatInput("");
+    try {
+      setLoadingChat(true);
+      const res = await api.get(`/admin/requests/${req.id}/messages`);
+      setChatMessages(res.data?.messages || []);
+    } catch (err) {
+      console.warn("Failed to load chat messages:", err);
+    } finally {
+      setLoadingChat(false);
+    }
+  };
+
+  const handleSendAdminChat = async (e) => {
+    e.preventDefault();
+    if (!chatInput.trim() || !chatRequest || sendingChat) return;
+    try {
+      setSendingChat(true);
+      const text = chatInput.trim();
+      setChatInput("");
+      const res = await api.post(`/admin/requests/${chatRequest.id}/messages`, {
+        message: text
+      });
+      if (res.data?.message) {
+        setChatMessages((prev) => [...prev, res.data.message]);
+      }
+    } catch (err) {
+      console.error("Failed to post message:", err);
+    } finally {
+      setSendingChat(false);
+    }
+  };
 
   const fetchStats = useCallback(async () => {
     try {
@@ -226,6 +397,16 @@ export default function AdminDashboard() {
         </div>
 
         <div className="navbar-right">
+          {/* Dark / Light Mode Toggle */}
+          <button
+            className="btn-icon theme-toggle-btn"
+            onClick={toggleTheme}
+            title={`Switch to ${theme === "dark" ? "Light" : "Dark"} Mode`}
+            style={{ marginRight: "4px" }}
+          >
+            {theme === "dark" ? <Sun size={18} className="text-amber" /> : <Moon size={18} />}
+          </button>
+
           <div className="user-profile-chip admin-chip">
             <div className="avatar-initials admin-avatar">A</div>
             <div className="user-profile-meta">
@@ -253,12 +434,29 @@ export default function AdminDashboard() {
               </p>
             </div>
 
-            <div className="admin-header-actions">
+            <div className="admin-header-actions" style={{ display: "flex", gap: "8px", flexWrap: "wrap", alignItems: "center" }}>
+              <button
+                className="btn btn-sm btn-outline-primary"
+                onClick={handleExportCsv}
+                disabled={exportingCsv}
+                title="Export current registry records to standard CSV"
+              >
+                <Download size={14} /> {exportingCsv ? "Exporting..." : "Export CSV"}
+              </button>
+
+              <button
+                className="btn btn-sm btn-outline"
+                onClick={openSettings}
+                title="Institutional Signatory Authority & Seal Customizer"
+              >
+                <Settings size={14} /> Seal &amp; Signature
+              </button>
+
               <button
                 className={`btn btn-sm ${urgencyFilter === "urgent" ? "btn-warning" : "btn-outline"}`}
                 onClick={() => setUrgencyFilter(urgencyFilter === "urgent" ? "all" : "urgent")}
               >
-                <AlertTriangle size={14} /> Highlight Urgent Deadlines ({stats.urgent})
+                <AlertTriangle size={14} /> Urgent ({stats.urgent})
               </button>
             </div>
           </div>
@@ -425,6 +623,15 @@ export default function AdminDashboard() {
                 <table className="admin-requests-table">
                   <thead>
                     <tr>
+                      <th style={{ width: "36px", textAlign: "center" }}>
+                        <input
+                          type="checkbox"
+                          checked={requests.length > 0 && selectedIds.length === requests.length}
+                          onChange={toggleSelectAll}
+                          title="Select all"
+                          style={{ cursor: "pointer", width: "16px", height: "16px" }}
+                        />
+                      </th>
                       <th>Ref ID &amp; Date</th>
                       <th>Student Details</th>
                       <th>Document Type</th>
@@ -437,9 +644,20 @@ export default function AdminDashboard() {
                   <tbody>
                     {requests.map((r) => {
                       const isReady = r.status === "Document Ready";
+                      const isSelected = selectedIds.includes(r.id);
 
                       return (
-                        <tr key={r.id} className={isReady ? "row-ready" : ""}>
+                        <tr key={r.id} className={`${isReady ? "row-ready" : ""} ${isSelected ? "row-selected" : ""}`}>
+                          {/* Row Checkbox */}
+                          <td style={{ textAlign: "center" }}>
+                            <input
+                              type="checkbox"
+                              checked={isSelected}
+                              onChange={() => toggleSelectRow(r.id)}
+                              style={{ cursor: "pointer", width: "16px", height: "16px" }}
+                            />
+                          </td>
+
                           {/* Ref ID & Date */}
                           <td>
                             <div className="font-mono font-bold text-sm text-primary">
@@ -510,12 +728,20 @@ export default function AdminDashboard() {
 
                           {/* Action Button */}
                           <td>
-                            <div className="table-actions-cell">
+                            <div className="table-actions-cell" style={{ display: "flex", gap: "6px", alignItems: "center" }}>
                               <button
                                 className="btn btn-primary btn-sm"
                                 onClick={() => openActionModal(r)}
                               >
-                                Manage Request
+                                Manage
+                              </button>
+
+                              <button
+                                className="btn btn-ghost btn-sm"
+                                onClick={() => openAdminChat(r)}
+                                title="Clarification Query Thread with Student"
+                              >
+                                <MessageSquare size={15} />
                               </button>
 
                               <button
@@ -751,6 +977,212 @@ export default function AdminDashboard() {
             section: previewDoc.section
           }}
         />
+      )}
+
+      {/* Floating Bulk Processing Bar */}
+      {selectedIds.length > 0 && (
+        <div className="bulk-floating-bar">
+          <span className="bulk-count-badge">
+            {selectedIds.length} Selected
+          </span>
+          <div className="bulk-btn-group">
+            <button
+              className="btn btn-sm btn-success"
+              onClick={() => handleBulkUpdate("Document Ready")}
+              disabled={bulkProcessing}
+            >
+              <CheckCircle size={14} /> Mark Ready ({selectedIds.length})
+            </button>
+            <button
+              className="btn btn-sm btn-primary"
+              onClick={() => handleBulkUpdate("Approved")}
+              disabled={bulkProcessing}
+            >
+              <FileCheck size={14} /> Approve ({selectedIds.length})
+            </button>
+            <button
+              className="btn btn-sm btn-warning"
+              onClick={() => handleBulkUpdate("Under Verification")}
+              disabled={bulkProcessing}
+            >
+              <Clock size={14} /> Verify ({selectedIds.length})
+            </button>
+            <button
+              className="btn btn-sm btn-outline text-white"
+              onClick={() => setSelectedIds([])}
+            >
+              Deselect
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* INSTITUTIONAL SETTINGS MODAL */}
+      {showSettingsModal && (
+        <div className="modal-backdrop" onClick={() => setShowSettingsModal(false)}>
+          <div className="modal-container" onClick={(e) => e.stopPropagation()} style={{ maxWidth: "520px" }}>
+            <div className="modal-header">
+              <div className="modal-header-info">
+                <span className="badge badge-accent">Institutional Customizer</span>
+                <h3>Digital Signature &amp; Seal Configuration</h3>
+                <p className="text-muted text-xs">Configure signatory authority details embedded onto generated PDF certificates.</p>
+              </div>
+              <button className="btn-close" onClick={() => setShowSettingsModal(false)} aria-label="Close">
+                <X size={18} />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveSettings}>
+              <div className="modal-body">
+                {settingsFeedback && (
+                  <div className={`portal-alert alert-${settingsFeedback.type}`}>
+                    {settingsFeedback.type === "success" ? <CheckCircle size={18} /> : <AlertCircle size={18} />}
+                    <span>{settingsFeedback.text}</span>
+                  </div>
+                )}
+
+                <div className="form-group mb-3">
+                  <label className="form-label" htmlFor="sig-name">
+                    Authorized Signatory Name *
+                  </label>
+                  <input
+                    id="sig-name"
+                    type="text"
+                    className="form-control"
+                    value={settingsForm.signatory_name}
+                    onChange={(e) => setSettingsForm({ ...settingsForm, signatory_name: e.target.value })}
+                    placeholder="e.g. Dr. D. Vasudevan, M.E., Ph.D."
+                    required
+                  />
+                  <span className="field-hint">Appears above the institutional signature line on certificates.</span>
+                </div>
+
+                <div className="form-group mb-3">
+                  <label className="form-label" htmlFor="sig-desig">
+                    Signatory Designation *
+                  </label>
+                  <input
+                    id="sig-desig"
+                    type="text"
+                    className="form-control"
+                    value={settingsForm.signatory_designation}
+                    onChange={(e) => setSettingsForm({ ...settingsForm, signatory_designation: e.target.value })}
+                    placeholder="e.g. Principal & Head of Institution"
+                    required
+                  />
+                </div>
+
+                <div className="form-group mb-3">
+                  <label className="form-label" htmlFor="seal-title">
+                    Official College Seal Text *
+                  </label>
+                  <input
+                    id="seal-title"
+                    type="text"
+                    className="form-control"
+                    value={settingsForm.seal_title}
+                    onChange={(e) => setSettingsForm({ ...settingsForm, seal_title: e.target.value })}
+                    placeholder="e.g. PSNA College of Engineering and Technology (Autonomous)"
+                    required
+                  />
+                  <span className="field-hint">Embedded into the round digital stamp and watermark footer.</span>
+                </div>
+              </div>
+
+              <div className="modal-footer">
+                <button type="button" className="btn btn-secondary" onClick={() => setShowSettingsModal(false)}>
+                  Cancel
+                </button>
+                <button type="submit" className="btn btn-primary" disabled={savingSettings}>
+                  {savingSettings ? "Saving Settings..." : "Save Configuration"}
+                  <Send size={15} />
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ADMIN QUERY / CLARIFICATION CHAT MODAL */}
+      {chatRequest && (
+        <div className="modal-backdrop" onClick={() => setChatRequest(null)}>
+          <div className="modal-container" onClick={(e) => e.stopPropagation()} style={{ maxWidth: "560px" }}>
+            <div className="modal-header">
+              <div className="modal-header-info">
+                <span className="badge badge-accent">Direct Clarification</span>
+                <h3>Student Query &amp; Requisition Chat</h3>
+                <p className="text-muted text-xs font-mono">
+                  {chatRequest.name} ({chatRequest.register_no}) &bull; {chatRequest.request_id}
+                </p>
+              </div>
+              <button className="btn-close" onClick={() => setChatRequest(null)} aria-label="Close">
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="modal-body">
+              {loadingChat ? (
+                <div className="loading-state" style={{ padding: "40px 0" }}>
+                  <div className="spinner"></div>
+                  <p className="text-xs text-muted" style={{ marginTop: "10px" }}>Loading query thread...</p>
+                </div>
+              ) : (
+                <div className="chat-thread-container">
+                  {chatMessages.length === 0 ? (
+                    <div style={{ textAlign: "center", padding: "40px 20px", color: "var(--text-muted)" }}>
+                      <MessageSquare size={36} style={{ margin: "0 auto 8px auto", opacity: 0.4 }} />
+                      <p style={{ fontWeight: 600, fontSize: "0.9rem" }}>No messages yet on this request.</p>
+                      <p style={{ fontSize: "0.78rem" }}>
+                        Need clarification from the student regarding their application? Send a note below.
+                      </p>
+                    </div>
+                  ) : (
+                    chatMessages.map((m) => {
+                      const isAdmin = m.sender_role === "admin";
+                      return (
+                        <div
+                          key={m.id}
+                          className={`chat-msg ${isAdmin ? "msg-student" : "msg-admin"}`}
+                        >
+                          <span className="chat-msg-sender">
+                            {isAdmin ? "You (Administration)" : m.sender_name || "Student"}
+                          </span>
+                          <div>{m.message}</div>
+                          <span className="chat-msg-time">
+                            {new Date(m.created_at).toLocaleTimeString("en-IN", {
+                              hour: "2-digit",
+                              minute: "2-digit"
+                            })}
+                          </span>
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+              )}
+
+              <form onSubmit={handleSendAdminChat} className="chat-input-row">
+                <input
+                  type="text"
+                  className="form-control"
+                  placeholder="Type an administrative message or instruction..."
+                  value={chatInput}
+                  onChange={(e) => setChatInput(e.target.value)}
+                  disabled={sendingChat}
+                  autoFocus
+                />
+                <button
+                  type="submit"
+                  className="btn btn-primary"
+                  disabled={sendingChat || !chatInput.trim()}
+                  style={{ display: "flex", alignItems: "center", justifyContent: "center", minWidth: "44px" }}
+                >
+                  <Send size={15} />
+                </button>
+              </form>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

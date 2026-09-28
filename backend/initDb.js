@@ -64,6 +64,29 @@ async function initDB() {
         is_read BOOLEAN DEFAULT FALSE,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
+
+      -- Query / Discussion messages for document clarification
+      CREATE TABLE IF NOT EXISTS request_messages (
+        id SERIAL PRIMARY KEY,
+        request_id INT REFERENCES document_requests(id) ON DELETE CASCADE,
+        sender_role VARCHAR(20) NOT NULL,
+        sender_name VARCHAR(100) NOT NULL,
+        message TEXT NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+
+      -- Institutional settings (digital signature, seal stamp, signing authority)
+      CREATE TABLE IF NOT EXISTS portal_settings (
+        id SERIAL PRIMARY KEY,
+        setting_key VARCHAR(50) UNIQUE NOT NULL,
+        setting_value TEXT NOT NULL,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+
+      -- Alter document_requests to support SHA-256 verification hash and scan analytics
+      ALTER TABLE document_requests ADD COLUMN IF NOT EXISTS verification_hash VARCHAR(64);
+      ALTER TABLE document_requests ADD COLUMN IF NOT EXISTS scan_count INT DEFAULT 0;
+      ALTER TABLE document_requests ADD COLUMN IF NOT EXISTS last_scanned_at TIMESTAMP;
     `);
 
     // Ensure default admin exists
@@ -102,7 +125,21 @@ async function initDB() {
       console.log("Default student Kapilesh B registered successfully.");
     }
 
-    console.log("Database initialized successfully!");
+    // Ensure default portal settings exist (Signatory & Seal defaults)
+    const signCheck = await pool.query(
+      "SELECT id FROM portal_settings WHERE setting_key = $1",
+      ["signatory_title"]
+    );
+    if (signCheck.rows.length === 0) {
+      await pool.query(
+        `INSERT INTO portal_settings (setting_key, setting_value) VALUES 
+         ('signatory_name', 'Dr. D. Vasudevan, M.E., Ph.D.'),
+         ('signatory_title', 'Principal & Academic Head'),
+         ('institution_seal_text', 'PSNA COLLEGE OF ENGINEERING AND TECHNOLOGY - OFFICIAL SEAL')`
+      );
+    }
+
+    console.log("Database initialized successfully with advanced feature schema!");
   } catch (error) {
     console.error("Database initialization error:", error.message);
   }

@@ -3,6 +3,7 @@ const jwt = require("jsonwebtoken");
 const nodemailer = require("nodemailer");
 const pool = require("../database");
 const studentAuthMiddleware = require("../middleware/studentAuthMiddleware");
+const { isValidRequiredDate } = require("../utils/dateValidation");
 
 const router = express.Router();
 
@@ -348,6 +349,158 @@ router.put("/notifications/read-all", studentAuthMiddleware, async (req, res) =>
   } catch (error) {
     console.error("Mark all notifications error:", error);
     res.status(500).json({ message: "Failed to update notifications" });
+  }
+});
+
+// Student Document Vault / Academic Locker (Feature #4: My Document Vault)
+router.get("/vault", studentAuthMiddleware, async (req, res) => {
+  try {
+    const result = await pool.query(
+      `SELECT
+        dr.id,
+        dr.request_id,
+        dr.document_type,
+        dr.purpose,
+        dr.required_by,
+        dr.status,
+        dr.admin_remarks,
+        dr.created_at,
+        dr.updated_at,
+        dr.verification_hash,
+        dr.scan_count,
+        dr.last_scanned_at,
+        d.id AS document_id,
+        d.qr_code,
+        d.file_url,
+        d.generated_at
+       FROM document_requests dr
+       LEFT JOIN documents d ON d.request_id = dr.id
+       WHERE dr.student_id = $1 AND dr.status IN ('Document Ready', 'Approved')
+       ORDER BY COALESCE(d.generated_at, dr.updated_at) DESC`,
+      [req.student.id]
+    );
+
+    res.json({ vault: result.rows });
+  } catch (error) {
+    console.error("Fetch document vault error:", error);
+    res.status(500).json({ message: "Failed to fetch document vault" });
+  }
+});
+
+// 1-Click Re-Request (Feature #5: 1-Click Re-Request)
+router.post("/requests/re-request", studentAuthMiddleware, async (req, res) => {
+  try {
+    const { previousRequestId, purpose, requiredBy } = req.body;
+    const studentId = req.student.id;
+
+    if (!previousRequestId || !requiredBy) {
+      return res.status(400).json({ message: "Previous request ID and required-by date are required" });
+    }
+
+    if (!isValidRequiredDate(requiredBy)) {
+      return res.status(400).json({
+        message: "Required-by date must be at least 5 days from today per college processing policy"
+      });
+    }
+
+    // Fetch previous request details
+    const prevResult = await pool.query(
+      `SELECT document_type, purpose FROM document_requests WHERE (id::text = $1 OR request_id = $1) AND student_id = $2`,
+      [String(previousRequestId), studentId]
+    );
+
+    if (prevResult.rows.length === 0) {
+      return res.status(404).json({ message: "Previous request not found" });
+    }
+
+    const prev = prevResult.rows[0];
+    const newRequestId = `REQ-${Date.now()}`;
+    const newPurpose = purpose && purpose.trim() ? purpose.trim() : prev.purpose;
+
+    const result = await pool.query(
+      `INSERT INTO document_requests
+       (request_id, student_id, document_type, purpose, required_by, status)
+       VALUES ($1, $2, $3, $4, $5, 'Submitted')
+       RETURNING *`,
+      [newRequestId, studentId, prev.document_type, newPurpose, requiredBy]
+    );
+
+    // Notify student
+    try {
+      await pool.query(
+        `INSERT INTO notifications (student_id, title, message)
+         VALUES ($1, 'Re-Request Queued 🔁', $2)`,
+        [studentId, `Your renewal request for ${prev.document_type} (${newRequestId}) has been submitted successfully.`]
+      );
+    } catch (e) {}
+
+    res.status(201).json({
+      message: "Document re-requested successfully!",
+      request: result.rows[0]
+    });
+  } catch (error) {
+    console.error("Re-request error:", error);
+    res.status(500).json({ message: "Failed to submit re-request" });
+  }
+});
+
+// Get Query Messages for a Request (Student)
+router.get("/requests/:id/messages", studentAuthMiddleware, async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    // Verify student ownership
+    const docCheck = await pool.query(
+      `SELECT id FROM document_requests WHERE id = $1 AND student_id = $2`,
+      [id, req.student.id]
+    );
+    if (docCheck.rows.length === 0) {
+      return res.status(404).json({ message: "Request not found" });
+    }
+
+    const result = await pool.query(
+      `SELECT id, request_id, sender_role, sender_name, message, created_at
+       FROM request_messages
+       WHERE request_id = $1
+       ORDER BY created_at ASC`,
+      [id]
+    );
+    res.json({ messages: result.rows });
+  } catch (error) {
+    console.error("Fetch request messages error:", error);
+    res.status(500).json({ message: "Failed to fetch messages" });
+  }
+});
+
+// Post Clarification Message on Request (Student)
+router.post("/requests/:id/messages", studentAuthMiddleware, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { message } = req.body;
+    if (!message || !message.trim()) {
+      return res.status(400).json({ message: "Message content cannot be empty" });
+    }
+
+    const docResult = await pool.query(
+      `SELECT id, request_id, document_type FROM document_requests WHERE id = $1 AND student_id = $2`,
+      [id, req.student.id]
+    );
+    if (docResult.rows.length === 0) {
+      return res.status(404).json({ message: "Request not found" });
+    }
+    const doc = docResult.rows[0];
+
+    const result = await pool.query(
+      `INSERT INTO request_messages (request_id, sender_role, sender_name, message)
+       VALUES ($1, 'student', $2, $3)
+       RETURNING *`,
+      [id, req.student.name || "Student", message.trim()]
+    );
+
+    res.status(201).json({ message: result.rows[0] });
+  } catch (error) {
+    console.error("Student message post error:", error);
+    res.status(500).json({ message: "Failed to post message" });
   }
 });
 

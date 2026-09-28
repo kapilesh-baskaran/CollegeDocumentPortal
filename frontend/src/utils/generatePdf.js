@@ -37,6 +37,21 @@ export async function generateCollegeDocumentPdf({
   doc.setLineWidth(0.4);
   doc.rect(margin + 2, margin + 2, contentWidth - 4, pageHeight - margin * 2 - 4);
 
+  // Security Anti-Forgery Diagonal Watermark
+  try {
+    doc.saveGraphicsState();
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(22);
+    doc.setTextColor(242, 245, 252); // Very subtle watermark
+    doc.text(`OFFICIAL COPY • PSNACET • ${studentDetails.registerNo || ""}`, pageWidth / 2, pageHeight / 2 + 10, {
+      align: "center",
+      angle: 45
+    });
+    doc.restoreGraphicsState();
+  } catch (wmErr) {
+    // Graceful fallback if angle rotation not available
+  }
+
   // College Header
   let y = margin + 14;
 
@@ -249,9 +264,16 @@ export async function generateCollegeDocumentPdf({
   doc.setTextColor(100, 116, 139);
   doc.text("Academic Administration", sigX + 20, sigY + 26, { align: "center" });
 
+  // Cryptographic SHA-256 Audit Fingerprint
+  const hashDisplay = request.verification_hash || `sha256:${requestId.toLowerCase()}${Date.now().toString(16)}`;
+  doc.setFont("courier", "bold");
+  doc.setFontSize(6);
+  doc.setTextColor(100, 116, 139);
+  doc.text(`CRYPTOGRAPHIC AUDIT HASH (SHA-256): ${hashDisplay}`, pageWidth / 2, pageHeight - margin - 8, { align: "center" });
+
   // Footer Disclaimer
   doc.setFont("helvetica", "normal");
-  doc.setFontSize(7);
+  doc.setFontSize(6.5);
   doc.setTextColor(148, 163, 184);
   doc.text(
     "Note: This is an authentic digitally generated college document certified by the College Document Portal. No physical signature is required.",

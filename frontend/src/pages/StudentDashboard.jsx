@@ -4,6 +4,7 @@ import {
   FileText,
   Clock,
   CheckCircle,
+  CheckCircle2,
   AlertTriangle,
   Download,
   Eye,
@@ -21,7 +22,15 @@ import {
   ShieldCheck,
   Bus,
   Home,
-  GraduationCap
+  GraduationCap,
+  FolderLock,
+  Sun,
+  Moon,
+  RotateCcw,
+  MessageSquare,
+  Send,
+  Copy,
+  X
 } from "lucide-react";
 import api from "../services/api";
 import DocumentModal from "../components/DocumentModal";
@@ -106,6 +115,43 @@ export default function StudentDashboard() {
   const [unreadCount, setUnreadCount] = useState(0);
   const [showNotifMenu, setShowNotifMenu] = useState(false);
 
+  // Dark / Light Theme Toggle
+  const [theme, setTheme] = useState(() => {
+    return localStorage.getItem("portal_theme") || "light";
+  });
+
+  useEffect(() => {
+    document.documentElement.setAttribute("data-theme", theme);
+    localStorage.setItem("portal_theme", theme);
+  }, [theme]);
+
+  const toggleTheme = () => {
+    setTheme((prev) => (prev === "dark" ? "light" : "dark"));
+  };
+
+  // Document Vault State
+  const [vaultItems, setVaultItems] = useState([]);
+  const [loadingVault, setLoadingVault] = useState(false);
+  const [copiedHash, setCopiedHash] = useState(null);
+
+  // 1-Click Re-Request State
+  const [reRequestTarget, setReRequestTarget] = useState(null);
+  const [reRequestPurpose, setReRequestPurpose] = useState("");
+  const [reRequestDate, setReRequestDate] = useState(() => {
+    const d = new Date();
+    d.setDate(d.getDate() + 5);
+    return d.toISOString().split("T")[0];
+  });
+  const [submittingReRequest, setSubmittingReRequest] = useState(false);
+  const [reRequestFeedback, setReRequestFeedback] = useState(null);
+
+  // Requisition Query / Clarification Chat State
+  const [chatRequest, setChatRequest] = useState(null);
+  const [chatMessages, setChatMessages] = useState([]);
+  const [chatInput, setChatInput] = useState("");
+  const [loadingChat, setLoadingChat] = useState(false);
+  const [sendingChat, setSendingChat] = useState(false);
+
   // Document Preview Modal State
   const [previewRequest, setPreviewRequest] = useState(null);
 
@@ -133,6 +179,18 @@ export default function StudentDashboard() {
     }
   }, []);
 
+  const fetchVault = useCallback(async () => {
+    try {
+      setLoadingVault(true);
+      const res = await api.get("/students/vault");
+      setVaultItems(res.data?.vault || []);
+    } catch (err) {
+      console.warn("Failed to load vault:", err);
+    } finally {
+      setLoadingVault(false);
+    }
+  }, []);
+
   const fetchNotifications = useCallback(async () => {
     try {
       const res = await api.get("/students/notifications");
@@ -153,8 +211,102 @@ export default function StudentDashboard() {
 
     fetchProfile();
     fetchRequests();
+    fetchVault();
     fetchNotifications();
-  }, [navigate, fetchProfile, fetchRequests, fetchNotifications]);
+  }, [navigate, fetchProfile, fetchRequests, fetchVault, fetchNotifications]);
+
+  const handleCopyHash = (hash) => {
+    navigator.clipboard.writeText(hash);
+    setCopiedHash(hash);
+    setTimeout(() => setCopiedHash(null), 2000);
+  };
+
+  const openReRequestModal = (req) => {
+    setReRequestTarget(req);
+    setReRequestPurpose(req.purpose || "Academic Re-enrollment / Term Renewal");
+    const d = new Date();
+    d.setDate(d.getDate() + 5);
+    setReRequestDate(d.toISOString().split("T")[0]);
+    setReRequestFeedback(null);
+  };
+
+  const handleConfirmReRequest = async (e) => {
+    e.preventDefault();
+    if (!reRequestTarget) return;
+
+    try {
+      setSubmittingReRequest(true);
+      setReRequestFeedback(null);
+
+      await api.post("/students/requests/re-request", {
+        previousRequestId: reRequestTarget.id,
+        purpose: reRequestPurpose.trim(),
+        requiredBy: reRequestDate
+      });
+
+      confetti({
+        particleCount: 60,
+        spread: 60,
+        origin: { y: 0.6 }
+      });
+
+      setReRequestFeedback({
+        type: "success",
+        text: "Renewal request submitted successfully!"
+      });
+
+      await fetchRequests();
+      await fetchVault();
+
+      setTimeout(() => {
+        setReRequestTarget(null);
+        setActiveTab("requests");
+      }, 1200);
+    } catch (err) {
+      setReRequestFeedback({
+        type: "error",
+        text: err.response?.data?.message || "Failed to submit renewal request."
+      });
+    } finally {
+      setSubmittingReRequest(false);
+    }
+  };
+
+  const openChatModal = async (req) => {
+    setChatRequest(req);
+    setChatMessages([]);
+    setChatInput("");
+    try {
+      setLoadingChat(true);
+      const res = await api.get(`/students/requests/${req.id}/messages`);
+      setChatMessages(res.data?.messages || []);
+    } catch (err) {
+      console.warn("Failed to load chat messages:", err);
+    } finally {
+      setLoadingChat(false);
+    }
+  };
+
+  const handleSendChatMessage = async (e) => {
+    e.preventDefault();
+    if (!chatInput.trim() || !chatRequest || sendingChat) return;
+
+    try {
+      setSendingChat(true);
+      const text = chatInput.trim();
+      setChatInput("");
+      const res = await api.post(`/students/requests/${chatRequest.id}/messages`, {
+        message: text
+      });
+      if (res.data?.message) {
+        setChatMessages((prev) => [...prev, res.data.message]);
+      }
+    } catch (err) {
+      console.error("Failed to post message:", err);
+    } finally {
+      setSendingChat(false);
+    }
+  };
   const handleMarkAllRead = async () => {
     try {
       await api.put("/students/notifications/read-all");
@@ -384,6 +536,16 @@ export default function StudentDashboard() {
             )}
           </div>
 
+          {/* Dark / Light Mode Toggle */}
+          <button
+            className="btn-icon theme-toggle-btn"
+            onClick={toggleTheme}
+            title={`Switch to ${theme === "dark" ? "Light" : "Dark"} Mode`}
+            style={{ marginRight: "4px" }}
+          >
+            {theme === "dark" ? <Sun size={19} className="text-amber" /> : <Moon size={19} />}
+          </button>
+
           {/* Student Profile Chip */}
           <div className="user-profile-chip">
             <div className="avatar-initials">
@@ -451,6 +613,14 @@ export default function StudentDashboard() {
             >
               <FileText size={17} />
               <span>Track Requests &amp; History ({requests.length})</span>
+            </button>
+
+            <button
+              className={`dash-tab-btn ${activeTab === "vault" ? "active" : ""}`}
+              onClick={() => setActiveTab("vault")}
+            >
+              <FolderLock size={17} />
+              <span>Document Vault {vaultItems.length > 0 && `(${vaultItems.length})`}</span>
             </button>
 
             <button
@@ -620,7 +790,23 @@ export default function StudentDashboard() {
                                 className="btn btn-outline btn-sm"
                                 onClick={() => setPreviewRequest(req)}
                               >
-                                <Eye size={14} /> Preview Certificate
+                                <Eye size={14} /> Preview
+                              </button>
+
+                              <button
+                                className="btn btn-outline-primary btn-sm"
+                                onClick={() => openReRequestModal(req)}
+                                title="Re-request for next semester or academic renewal"
+                              >
+                                <RotateCcw size={14} /> Re-Request
+                              </button>
+
+                              <button
+                                className="btn btn-ghost btn-sm"
+                                onClick={() => openChatModal(req)}
+                                title="Clarification chat with administration"
+                              >
+                                <MessageSquare size={14} /> Chat
                               </button>
 
                               <a
@@ -640,6 +826,15 @@ export default function StudentDashboard() {
                               >
                                 <Eye size={14} /> Preview Request Draft
                               </button>
+
+                              <button
+                                className="btn btn-outline btn-sm"
+                                onClick={() => openChatModal(req)}
+                                title="Clarification chat with administration"
+                              >
+                                <MessageSquare size={14} /> Clarification Chat
+                              </button>
+
                               <span className="text-muted text-xs">
                                 PDF Download will unlock once marked &quot;Document Ready&quot;.
                               </span>
@@ -649,6 +844,152 @@ export default function StudentDashboard() {
                       </div>
                     );
                   })}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* TAB: DOCUMENT VAULT / ACADEMIC LOCKER */}
+          {activeTab === "vault" && (
+            <div className="tab-content-fade">
+              <div className="applicant-summary-box mb-4" style={{ background: "rgba(30, 58, 138, 0.08)", border: "1px solid rgba(59, 130, 246, 0.25)" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "12px" }}>
+                  <div>
+                    <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                      <FolderLock size={22} className="text-primary" />
+                      <h2 style={{ margin: 0, fontSize: "1.25rem", fontWeight: 800 }}>My Academic Document Vault</h2>
+                    </div>
+                    <p className="text-muted text-sm" style={{ margin: "4px 0 0 0" }}>
+                      Your permanent, secure repository of verified and authorized college documents.
+                      Protected by cryptographic SHA-256 signatures and QR verification.
+                    </p>
+                  </div>
+                  <div>
+                    <span className="badge badge-accent font-mono" style={{ fontSize: "0.85rem", padding: "6px 14px" }}>
+                      {vaultItems.length} Authorized Document{vaultItems.length === 1 ? "" : "s"}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {loadingVault ? (
+                <div className="card loading-state">
+                  <div className="spinner"></div>
+                  <p>Unlocking your academic vault...</p>
+                </div>
+              ) : vaultItems.length === 0 ? (
+                <div className="empty-state-card">
+                  <FolderLock size={48} className="empty-icon text-muted" />
+                  <h3>Your Document Vault is Empty</h3>
+                  <p className="text-muted">
+                    Once your document requests are approved and finalized by the administration,
+                    they will automatically appear in this permanent locker for 1-click access anytime.
+                  </p>
+                  <button className="btn btn-primary mt-3" onClick={() => setActiveTab("new-request")}>
+                    <PlusCircle size={16} /> Request a Document
+                  </button>
+                </div>
+              ) : (
+                <div className="vault-grid">
+                  {vaultItems.map((item) => (
+                    <div key={item.id} className="vault-card glass-card">
+                      <div className="vault-card-header">
+                        <div>
+                          <span className="badge badge-accent mb-1" style={{ fontSize: "0.7rem" }}>
+                            <ShieldCheck size={12} style={{ display: "inline", marginRight: "4px" }} /> Authorized Copy
+                          </span>
+                          <h3 className="vault-doc-type" style={{ margin: "4px 0 2px 0" }}>{item.document_type}</h3>
+                          <span className="vault-ref">Ref: {item.request_id}</span>
+                        </div>
+                        <span className="status-badge status-ready">
+                          <CheckCircle2 size={13} /> Active
+                        </span>
+                      </div>
+
+                      <div className="vault-card-body">
+                        <div className="vault-meta-row">
+                          <span>Purpose:</span>
+                          <span className="font-semibold text-dark" style={{ textAlign: "right" }}>{item.purpose}</span>
+                        </div>
+                        <div className="vault-meta-row">
+                          <span>Issued Date:</span>
+                          <span className="font-medium">
+                            {new Date(item.created_at).toLocaleDateString("en-IN", {
+                              day: "numeric",
+                              month: "short",
+                              year: "numeric"
+                            })}
+                          </span>
+                        </div>
+                        {item.scan_count !== undefined && (
+                          <div className="vault-meta-row">
+                            <span>Verifications:</span>
+                            <span className="font-semibold text-primary">{item.scan_count || 0} scan(s)</span>
+                          </div>
+                        )}
+
+                        {item.verification_hash && (
+                          <div style={{ marginTop: "10px" }}>
+                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: "0.75rem", color: "var(--text-muted)", marginBottom: "4px" }}>
+                              <span>SHA-256 Fingerprint:</span>
+                              <button
+                                type="button"
+                                className="btn-link text-xs"
+                                style={{ display: "flex", alignItems: "center", gap: "4px", padding: 0 }}
+                                onClick={() => handleCopyHash(item.verification_hash)}
+                              >
+                                {copiedHash === item.verification_hash ? (
+                                  <span className="text-success" style={{ display: "flex", alignItems: "center", gap: "2px" }}>
+                                    <Check size={11} /> Copied
+                                  </span>
+                                ) : (
+                                  <span style={{ display: "flex", alignItems: "center", gap: "2px" }}>
+                                    <Copy size={11} /> Copy Hash
+                                  </span>
+                                )}
+                              </button>
+                            </div>
+                            <div className="vault-hash-strip">
+                              {item.verification_hash}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="vault-card-actions">
+                        <button
+                          className="btn btn-success btn-sm"
+                          style={{ flex: 1 }}
+                          onClick={() => handleDirectDownload(item)}
+                        >
+                          <Download size={14} /> Download PDF
+                        </button>
+                        <button
+                          className="btn btn-outline btn-sm"
+                          onClick={() => setPreviewRequest(item)}
+                          title="Preview Certificate"
+                        >
+                          <Eye size={14} />
+                        </button>
+                        <button
+                          className="btn btn-outline-primary btn-sm"
+                          onClick={() => openReRequestModal(item)}
+                          title="Re-request for next semester"
+                        >
+                          <RotateCcw size={14} /> Re-Request
+                        </button>
+                        <a
+                          href={`/verify/${item.request_id}`}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="btn btn-ghost btn-sm text-primary"
+                          title="Public Verification"
+                        >
+                          <ExternalLink size={14} />
+                        </a>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               )}
             </div>
@@ -867,6 +1208,175 @@ export default function StudentDashboard() {
           )}
         </div>
       </main>
+
+      {/* 1-CLICK RE-REQUEST MODAL */}
+      {reRequestTarget && (
+        <div className="modal-backdrop" onClick={() => setReRequestTarget(null)}>
+          <div className="modal-container" onClick={(e) => e.stopPropagation()} style={{ maxWidth: "480px" }}>
+            <div className="modal-header">
+              <div className="modal-header-info">
+                <span className="badge badge-accent">1-Click Semester Renewal</span>
+                <h3>Re-Request Document</h3>
+                <p className="text-muted text-xs font-mono">{reRequestTarget.request_id}</p>
+              </div>
+              <button className="btn-close" onClick={() => setReRequestTarget(null)} aria-label="Close">
+                <X size={18} />
+              </button>
+            </div>
+
+            <form onSubmit={handleConfirmReRequest}>
+              <div className="modal-body">
+                {reRequestFeedback && (
+                  <div className={`portal-alert alert-${reRequestFeedback.type}`}>
+                    {reRequestFeedback.type === "success" ? <CheckCircle size={18} /> : <AlertTriangle size={18} />}
+                    <span>{reRequestFeedback.text}</span>
+                  </div>
+                )}
+
+                <div className="applicant-summary-box" style={{ marginTop: 0, marginBottom: "16px" }}>
+                  <div style={{ fontSize: "0.75rem", fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase" }}>
+                    Document Type to Re-issue
+                  </div>
+                  <div style={{ fontSize: "1.1rem", fontWeight: 800, color: "var(--primary-navy)", marginTop: "4px" }}>
+                    {reRequestTarget.document_type}
+                  </div>
+                  <div style={{ fontSize: "0.8rem", color: "var(--text-muted)", marginTop: "4px" }}>
+                    Issuing to: {student?.name} ({student?.register_no}) &bull; {student?.department}
+                  </div>
+                </div>
+
+                <div className="form-group mb-3">
+                  <label className="form-label" htmlFor="rereq-purpose">
+                    Purpose for New Semester / Period *
+                  </label>
+                  <input
+                    id="rereq-purpose"
+                    type="text"
+                    className="form-control"
+                    value={reRequestPurpose}
+                    onChange={(e) => setReRequestPurpose(e.target.value)}
+                    placeholder="e.g. Next Semester Fee Loan, Passport Renewal, etc."
+                    required
+                  />
+                </div>
+
+                <div className="form-group mb-3">
+                  <label className="form-label" htmlFor="rereq-date">
+                    Target Date Required *
+                  </label>
+                  <div className="input-with-icon">
+                    <Calendar size={18} className="input-icon" />
+                    <input
+                      id="rereq-date"
+                      type="date"
+                      className="form-control"
+                      min={getMinDate()}
+                      value={reRequestDate}
+                      onChange={(e) => setReRequestDate(e.target.value)}
+                      required
+                    />
+                  </div>
+                  <span className="field-hint">
+                    Standard college processing requires a 5-day lead time.
+                  </span>
+                </div>
+              </div>
+
+              <div className="modal-footer">
+                <button type="button" className="btn btn-secondary" onClick={() => setReRequestTarget(null)}>
+                  Cancel
+                </button>
+                <button type="submit" className="btn btn-primary" disabled={submittingReRequest}>
+                  {submittingReRequest ? "Submitting..." : "Submit Re-Request"}
+                  <RotateCcw size={15} />
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* CLARIFICATION CHAT MODAL */}
+      {chatRequest && (
+        <div className="modal-backdrop" onClick={() => setChatRequest(null)}>
+          <div className="modal-container" onClick={(e) => e.stopPropagation()} style={{ maxWidth: "560px" }}>
+            <div className="modal-header">
+              <div className="modal-header-info">
+                <span className="badge badge-accent">Direct Query Thread</span>
+                <h3>Office Clarification Chat</h3>
+                <p className="text-muted text-xs font-mono">
+                  {chatRequest.document_type} &bull; {chatRequest.request_id}
+                </p>
+              </div>
+              <button className="btn-close" onClick={() => setChatRequest(null)} aria-label="Close">
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="modal-body">
+              {loadingChat ? (
+                <div className="loading-state" style={{ padding: "40px 0" }}>
+                  <div className="spinner"></div>
+                  <p className="text-xs text-muted" style={{ marginTop: "10px" }}>Loading query thread...</p>
+                </div>
+              ) : (
+                <div className="chat-thread-container">
+                  {chatMessages.length === 0 ? (
+                    <div style={{ textAlign: "center", padding: "40px 20px", color: "var(--text-muted)" }}>
+                      <MessageSquare size={36} style={{ margin: "0 auto 8px auto", opacity: 0.4 }} />
+                      <p style={{ fontWeight: 600, fontSize: "0.9rem" }}>No messages yet on this request.</p>
+                      <p style={{ fontSize: "0.78rem" }}>
+                        Have questions or corrections from the college administration? Send a message below.
+                      </p>
+                    </div>
+                  ) : (
+                    chatMessages.map((m) => {
+                      const isStudent = m.sender_role === "student";
+                      return (
+                        <div
+                          key={m.id}
+                          className={`chat-msg ${isStudent ? "msg-student" : "msg-admin"}`}
+                        >
+                          <span className="chat-msg-sender">
+                            {isStudent ? "You" : m.sender_name || "Administration"}
+                          </span>
+                          <div>{m.message}</div>
+                          <span className="chat-msg-time">
+                            {new Date(m.created_at).toLocaleTimeString("en-IN", {
+                              hour: "2-digit",
+                              minute: "2-digit"
+                            })}
+                          </span>
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+              )}
+
+              <form onSubmit={handleSendChatMessage} className="chat-input-row">
+                <input
+                  type="text"
+                  className="form-control"
+                  placeholder="Type your message or clarification here..."
+                  value={chatInput}
+                  onChange={(e) => setChatInput(e.target.value)}
+                  disabled={sendingChat}
+                  autoFocus
+                />
+                <button
+                  type="submit"
+                  className="btn btn-primary"
+                  disabled={sendingChat || !chatInput.trim()}
+                  style={{ display: "flex", alignItems: "center", justifyContent: "center", minWidth: "44px" }}
+                >
+                  <Send size={15} />
+                </button>
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Document Preview & Download Modal */}
       {previewRequest && (
