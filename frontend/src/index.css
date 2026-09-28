@@ -2418,11 +2418,215 @@ h1, h2, h3, h4, h5, h6 {
 [data-theme="dark"] .kpi-card,
 [data-theme="dark"] .vault-card,
 [data-theme="dark"] .portal-card,
+[data-theme="dark"] .request-card,
+[data-theme="dark"] .form-card-container,
+[data-theme="dark"] .notifications-card,
 [data-theme="dark"] .student-profile-banner {
-  background: rgba(15, 23, 42, 0.88) !important;
-  border-color: rgba(255, 255, 255, 0.12) !important;
+  background: #0f172a !important;
+  border-color: #334155 !important;
   box-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.5) !important;
   color: #cbd5e1;
+}
+
+[data-theme="dark"] .request-card {
+  background: #0f172a !important;
+  border-color: #334155 !important;
+  color: #cbd5e1 !important;
+}
+
+[data-theme="dark"] .request-card:hover {
+  border-color: #475569 !important;
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.4) !important;
+}
+
+[data-theme="dark"] .card-ready-glow {
+  border-color: #059669 !important;
+  box-shadow: 0 0 20px rgba(16, 185, 129, 0.2) !important;
+}
+
+[data-theme="dark"] .req-doc-title {
+  color: #f8fafc !important;
+}
+
+[data-theme="dark"] .req-meta-grid {
+  background: #1e293b !important;
+  border: 1px solid #334155 !important;
+}
+
+[data-theme="dark"] .meta-lbl {
+  color: #94a3b8 !important;
+}
+
+[data-theme="dark"] .meta-val {
+  color: #f1f5f9 !important;
+}
+
+[data-theme="dark"] .academic-tag {
+  background: #1e293b !important;
+  border-color: #334155 !important;
+  color: #cbd5e1 !important;
+}
+
+[data-theme="dark"] .academic-tag strong {
+  color: #f8fafc !important;
+}
+
+[data-theme="dark"] .filter-chip {
+  background: #1e293b !important;
+  color: #cbd5e1 !important;
+  border-color: #334155 !important;
+}
+
+[data-theme="dark"] .filter-chip.active {
+  background: #2563eb !important;
+  color: #ffffff !important;
+  border-color: #3b82f6 !important;
+}
+
+[data-theme="dark"] .step-dot {
+  background: #1e293b !important;
+  border-color: #334155 !important;
+  color: #94a3b8 !important;
+}
+
+[data-theme="dark"] .step-done .step-dot {
+  background: #2563eb !important;
+  border-color: #3b82f6 !important;
+  color: #ffffff !important;
+}
+
+[data-theme="dark"] .step-lbl {
+  color: #94a3b8 !important;
+}
+
+[data-theme="dark"] .steps-row::before {
+  background: #334155 !important;
+}
+
+[data-theme="dark"] .remarks-banner {
+  background: #1e293b !important;
+  border-color: #334155 !important;
+  color: #cbd5e1 !important;
+}
+
+[data-theme="dark"] .remarks-author {
+  color: #94a3b8 !important;
+}
+
+[data-theme="dark"] .remarks-text {
+  color: #f1f5f9 !important;
+}
+
+/* Auth Pages Dark Mode */
+[data-theme="dark"] .auth-page-container {
+  background: #090d16 !important;
+  color: #f1f5f9 !important;
+}
+
+[data-theme="dark"] .auth-card-wrapper {
+  background: rgba(15, 23, 42, 0.95) !important;
+  border-color: #334155 !important;
+  box-shadow: 0 25px 60px rgba(0, 0, 0, 0.7) !important;
+  color: #f1f5f9 !important;
+}
+
+[data-theme="dark"] .role-tab-group {
+  background: #1e293b !important;
+  border-color: #334155 !important;
+}
+
+[data-theme="dark"] .role-tab-btn {
+  color: #94a3b8 !important;
+}
+
+[data-theme="dark"] .role-tab-btn.active {
+  background: #0f172a !important;
+  color: #60a5fa !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5) !important;
+}
+
+[data-theme="dark"] .auth-title {
+  color: #ffffff !important;
+}
+
+[data-theme="dark"] .auth-subtitle {
+  color: #94a3b8 !important;
+}
+
+[data-theme="dark"] .form-label {
+  color: #e2e8f0 !important;
+}
+
+[data-theme="dark"] .field-hint {
+  color: #94a3b8 !important;
+}
+
+[data-theme="dark"] .auth-footer {
+  border-top-color: #1e293b !important;
+  color: #94a3b8 !important;
+}
+
+[data-theme="dark"] .doc-type-card {
+  background: #1e293b !important;
+  border-color: #334155 !important;
+  color: #f1f5f9 !important;
+}
+
+[data-theme="dark"] .doc-type-card.selected {
+  border-color: #3b82f6 !important;
+  background: rgba(59, 130, 246, 0.15) !important;
+}
+
+[data-theme="dark"] .doc-card-title {
+  color: #ffffff !important;
+}
+
+[data-theme="dark"] .doc-card-desc {
+  color: #94a3b8 !important;
+}
+
+[data-theme="dark"] .notification-row {
+  border-bottom-color: #1e293b !important;
+  color: #cbd5e1 !important;
+}
+
+[data-theme="dark"] .notification-row:hover {
+  background: #1e293b !important;
+}
+
+[data-theme="dark"] .notif-main-title {
+  color: #f8fafc !important;
+}
+
+[data-theme="dark"] .notif-dropdown-menu {
+  background: #0f172a !important;
+  border-color: #334155 !important;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.6) !important;
+}
+
+[data-theme="dark"] .notif-menu-header {
+  border-bottom-color: #1e293b !important;
+  color: #f8fafc !important;
+}
+
+[data-theme="dark"] .notif-item {
+  border-bottom-color: #1e293b !important;
+}
+
+[data-theme="dark"] .notif-item:hover {
+  background: #1e293b !important;
+}
+
+[data-theme="dark"] .notif-item.unread {
+  background: rgba(59, 130, 246, 0.12) !important;
+}
+
+[data-theme="dark"] .notif-item-title {
+  color: #f8fafc !important;
+}
+
+[data-theme="dark"] .notif-item-msg {
+  color: #cbd5e1 !important;
 }
 
 [data-theme="dark"] .form-control,
@@ -2458,13 +2662,11 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 [data-theme="dark"] .dash-toolbar,
-[data-theme="dark"] .role-tab-group,
 [data-theme="dark"] .tabs-nav {
   background: rgba(15, 23, 42, 0.7);
   border-color: #1e293b;
 }
 
-[data-theme="dark"] .role-tab-btn.active,
 [data-theme="dark"] .tab-btn.active,
 [data-theme="dark"] .dash-tab-btn.active {
   background: #1e293b !important;
@@ -2725,4 +2927,128 @@ h1, h2, h3, h4, h5, h6 {
 
 [data-theme="dark"] .row-ready {
   background: rgba(16, 185, 129, 0.12) !important;
+}
+
+/* Additional Dark Theme Utilities & Floating Toggle */
+.text-dark {
+  color: var(--text-dark);
+}
+
+.auth-theme-floating {
+  position: absolute;
+  top: 20px;
+  right: 24px;
+  z-index: 50;
+}
+
+.btn-theme-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid rgba(203, 213, 225, 0.8);
+  border-radius: 9999px;
+  padding: 8px 16px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #334155;
+  cursor: pointer;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.08);
+  backdrop-filter: blur(8px);
+  transition: all 0.2s ease;
+}
+
+.btn-theme-toggle:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.12);
+}
+
+[data-theme="dark"] .btn-theme-toggle {
+  background: rgba(15, 23, 42, 0.9) !important;
+  border-color: #334155 !important;
+  color: #f1f5f9 !important;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5) !important;
+}
+
+.backup-otp-banner {
+  margin-top: 10px;
+  font-size: 12px;
+  color: #64748b;
+  text-align: center;
+  background: #f8fafc;
+  padding: 8px 12px;
+  border-radius: 6px;
+  border: 1px dashed #cbd5e1;
+}
+
+.backup-otp-code {
+  color: #1e3a8a;
+  letter-spacing: 2px;
+  font-size: 13px;
+  margin-left: 4px;
+}
+
+[data-theme="dark"] .backup-otp-banner {
+  background: #1e293b !important;
+  color: #94a3b8 !important;
+  border-color: #334155 !important;
+}
+
+[data-theme="dark"] .backup-otp-code {
+  color: #60a5fa !important;
+}
+
+[data-theme="dark"] .email-display-pill {
+  background: #1e293b !important;
+  border-color: #334155 !important;
+  color: #f8fafc !important;
+}
+
+[data-theme="dark"] .btn-outline {
+  color: #cbd5e1;
+  border-color: #334155;
+}
+
+[data-theme="dark"] .btn-outline:hover:not(:disabled) {
+  background-color: #1e293b !important;
+  border-color: #475569 !important;
+  color: #f8fafc !important;
+}
+
+[data-theme="dark"] .btn-ghost {
+  color: #cbd5e1;
+}
+
+[data-theme="dark"] .btn-ghost:hover:not(:disabled) {
+  background-color: #1e293b !important;
+  color: #f8fafc !important;
+}
+
+[data-theme="dark"] .empty-state-card {
+  background: #0f172a !important;
+  border-color: #334155 !important;
+  color: #cbd5e1 !important;
+}
+
+[data-theme="dark"] .empty-state-card h3 {
+  color: #f8fafc !important;
+}
+
+[data-theme="dark"] .auth-logo-badge {
+  background: #ffffff;
+  border: 1px solid #334155;
+}
+
+[data-theme="dark"] .step-tracker-title {
+  color: #94a3b8 !important;
+}
+
+[data-theme="dark"] .card-ready-glow {
+  border-color: #059669 !important;
+  box-shadow: 0 0 20px rgba(5, 150, 105, 0.25) !important;
+}
+
+[data-theme="dark"] .doc-icon-badge {
+  background: #1e293b !important;
+  color: #60a5fa !important;
 }

@@ -20,8 +20,36 @@ async function loadImageDataUrl(url) {
   }
 }
 
+function getOrdinalYear(year) {
+  const y = parseInt(year, 10);
+  if (y === 1) return "1st";
+  if (y === 2) return "2nd";
+  if (y === 3) return "3rd";
+  if (y === 4) return "4th";
+  return `${year || "Current"}`;
+}
+
+function getWordYear(year) {
+  const y = parseInt(year, 10);
+  if (y === 1) return "First";
+  if (y === 2) return "Second";
+  if (y === 3) return "Third";
+  if (y === 4) return "Final";
+  return "First";
+}
+
+function getRomanYear(year) {
+  const y = parseInt(year, 10);
+  if (y === 1) return "I";
+  if (y === 2) return "II";
+  if (y === 3) return "III";
+  if (y === 4) return "IV";
+  return "I";
+}
+
 /**
  * Generates an authentic, pixel-accurate PSNACET College Document PDF
+ * replicating the physical institutional samples 1:1.
  */
 export async function generateCollegeDocumentPdf({
   requestId,
@@ -42,22 +70,30 @@ export async function generateCollegeDocumentPdf({
   const pageHeight = doc.internal.pageSize.getHeight(); // 297mm
   const margin = 14;
 
-  // Format Issue Date: DD-MM-YYYY
   const today = new Date();
-  const dateStr = issueDate
+  // Hyphenated date: DD-MM-YYYY (Sample: Date:17-10-2024)
+  const dateHyphen = issueDate
     ? new Date(issueDate).toLocaleDateString("en-GB").replace(/\//g, "-")
     : `${String(today.getDate()).padStart(2, "0")}-${String(today.getMonth() + 1).padStart(2, "0")}-${today.getFullYear()}`;
+
+  // Dotted date: DD.MM.YYYY (Sample: Date: 05.11.2024)
+  const dateDots = issueDate
+    ? new Date(issueDate).toLocaleDateString("en-GB").replace(/\//g, ".")
+    : `${String(today.getDate()).padStart(2, "0")}.${String(today.getMonth() + 1).padStart(2, "0")}.${today.getFullYear()}`;
 
   const studentName = student?.name || "B. Kapilesh";
   const registerNo = student?.register_no || "2403921320521068";
   const deptName = student?.department || "Information Technology";
   const yearNum = parseInt(student?.year, 10) || 1;
   const ordinalYear = getOrdinalYear(yearNum);
+  const wordYear = getWordYear(yearNum);
+  const romanYear = getRomanYear(yearNum);
+
   const hash =
     verificationHash ||
     `sha256:${requestId ? requestId.toLowerCase().replace(/[^a-z0-9]/g, "") : ""}${Date.now().toString(16)}`;
 
-  // Load Authentic Assets
+  // Load Authentic Institutional Assets
   const [
     letterheadImg,
     footerImg,
@@ -65,7 +101,8 @@ export async function generateCollegeDocumentPdf({
     hodStampImg,
     collegeSealImg,
     registrarSignImg,
-    transportStampImg
+    transportStampImg,
+    psnaLogoImg
   ] = await Promise.all([
     loadImageDataUrl("/psna-letterhead.png"),
     loadImageDataUrl("/psna-footer.png"),
@@ -73,7 +110,8 @@ export async function generateCollegeDocumentPdf({
     loadImageDataUrl("/hod-stamp.png"),
     loadImageDataUrl("/college-seal.png"),
     loadImageDataUrl("/registrar-sign.png"),
-    loadImageDataUrl("/transport-stamp.png")
+    loadImageDataUrl("/transport-stamp.png"),
+    loadImageDataUrl("/psna-logo.png")
   ]);
 
   // Generate QR Code
@@ -88,83 +126,82 @@ export async function generateCollegeDocumentPdf({
     console.warn("QR generation failed in PDF:", e);
   }
 
-  // Draw Letterhead Header (Top)
-  if (letterheadImg) {
-    doc.addImage(letterheadImg, "PNG", margin, 10, pageWidth - margin * 2, 38);
-  } else {
-    // Fallback vector header if image not accessible
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(16);
-    doc.setTextColor(30, 58, 138);
-    doc.text("PSNA COLLEGE OF ENGINEERING & TECHNOLOGY", pageWidth / 2, 22, { align: "center" });
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(9);
-    doc.setTextColor(71, 85, 105);
-    doc.text("(An Autonomous Institution Affiliated to Anna University, Chennai)", pageWidth / 2, 28, { align: "center" });
-    doc.text("Accredited by NAAC with 'A++ Grade' | NBA Accredited | AICTE Approved", pageWidth / 2, 33, { align: "center" });
-  }
+  // -------------------------------------------------------------
+  // LETTERHEAD & BACKGROUND WATERMARK (For Letterhead Documents)
+  // -------------------------------------------------------------
+  if (documentType !== "Bus Fee Structure") {
+    // Official Letterhead Crest & Banner at Top
+    if (letterheadImg) {
+      doc.addImage(letterheadImg, "PNG", margin, 10, pageWidth - margin * 2, 38);
+    } else {
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(16);
+      doc.setTextColor(30, 58, 138);
+      doc.text("PSNA COLLEGE OF ENGINEERING & TECHNOLOGY", pageWidth / 2, 22, { align: "center" });
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(9);
+      doc.setTextColor(71, 85, 105);
+      doc.text("(An Autonomous Institution Affiliated to Anna University, Chennai)", pageWidth / 2, 28, { align: "center" });
+      doc.text("Accredited by NAAC with 'A++ Grade' | NBA Accredited | AICTE Approved", pageWidth / 2, 33, { align: "center" });
+    }
 
-  // Draw "Building the Future" Vertical Script on Left Margin
-  if (buildingFutureImg && documentType !== "Bus Fee Structure") {
-    doc.addImage(buildingFutureImg, "PNG", 6, 62, 11, 74);
+    // "Building the Future" Calligraphy Script along Left Margin
+    if (buildingFutureImg) {
+      doc.addImage(buildingFutureImg, "PNG", 6, 62, 11, 74);
+    }
   }
-
-  // Subtle Diagonal Anti-Forgery Watermark across background
-  try {
-    doc.saveGraphicsState();
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(18);
-    doc.setTextColor(242, 244, 248);
-    doc.text(`OFFICIAL COPY • PSNACET • ${registerNo}`, pageWidth / 2, pageHeight / 2 + 10, {
-      align: "center",
-      angle: 45
-    });
-    doc.restoreGraphicsState();
-  } catch (wmErr) {}
 
   // -------------------------------------------------------------
   // DOCUMENT TYPE 1: BONAFIDE CERTIFICATE (Exact replica of sample)
+  // Sample: media_1790575764431.png
   // -------------------------------------------------------------
   if (documentType === "Bonafide Certificate") {
-    // Right-aligned Date
+    // Right-aligned Date: Date:17-10-2024
     doc.setFont("helvetica", "bold");
     doc.setFontSize(11);
     doc.setTextColor(0, 0, 0);
-    doc.text(`Date: ${dateStr}`, pageWidth - margin - 5, 58, { align: "right" });
+    doc.text(`Date:${dateHyphen}`, pageWidth - margin - 4, 58, { align: "right" });
 
     // Document Title: Centered, Bold
     doc.setFont("helvetica", "bold");
     doc.setFontSize(16);
     doc.text("Bonafide Certificate", pageWidth / 2, 72, { align: "center" });
 
-    // Main Certificate Prose
+    // Certificate Content Paragraph 1
     const contentLeft = margin + 14;
     const contentWidth = pageWidth - margin * 2 - 16;
     let y = 88;
 
     doc.setFont("helvetica", "normal");
     doc.setFontSize(11.5);
-    doc.setLineHeightFactor(1.55);
+    doc.setLineHeightFactor(1.6);
 
-    const para1 = `This is to certify that  Mr./Ms. ${studentName}  is a bonafide student of this college, studying in ${ordinalYear} year B.Tech. Degree in ${deptName} during the academic year 2024-2025.`;
+    const para1 = `This is to certify that Mr./Ms. ${studentName} is a bonafide student of this college, studying in ${ordinalYear} year B.Tech. Degree in ${deptName} during the academic year 2024-2025.`;
     const splitPara1 = doc.splitTextToSize(para1, contentWidth);
     doc.text(splitPara1, contentLeft, y);
-    y += splitPara1.length * 7 + 10;
+    y += splitPara1.length * 7.5 + 10;
 
-    const cleanPurpose = purpose && purpose.trim() ? purpose.trim() : "education loan processing";
-    const purposeText = cleanPurpose.toLowerCase().startsWith("apply") || cleanPurpose.toLowerCase().startsWith("for")
-      ? `This certificate is issued to ${cleanPurpose}.`
-      : `This certificate is issued to apply for ${cleanPurpose}.`;
+    // Certificate Content Paragraph 2
+    let cleanPurpose = purpose && purpose.trim() ? purpose.trim() : "an education loan";
+    if (cleanPurpose.toLowerCase().startsWith("apply for ")) {
+      cleanPurpose = cleanPurpose.slice(10);
+    } else if (cleanPurpose.toLowerCase().startsWith("for ")) {
+      cleanPurpose = cleanPurpose.slice(4);
+    }
+    if (cleanPurpose.toLowerCase() === "education loan processing" || cleanPurpose.toLowerCase() === "education loan") {
+      cleanPurpose = "an education loan";
+    }
 
-    const splitPara2 = doc.splitTextToSize(purposeText, contentWidth);
+    const para2 = `This certificate is issued to apply for ${cleanPurpose}.`;
+    const splitPara2 = doc.splitTextToSize(para2, contentWidth);
     doc.text(splitPara2, contentLeft, y);
 
-    // Signatures and Stamps (Right Bottom)
-    const sigX = pageWidth - margin - 55;
-    const sigY = 175;
+    // Signatures and Authentic HOD Stamp (Right Bottom)
+    const sigX = pageWidth - margin - 60;
+    const sigY = 172;
 
     if (hodStampImg) {
-      doc.addImage(hodStampImg, "PNG", sigX - 10, sigY - 8, 62, 42);
+      doc.addImage(hodStampImg, "PNG", sigX - 8, sigY - 8, 64, 44);
     } else {
       doc.setFont("helvetica", "bold");
       doc.setFontSize(12);
@@ -182,32 +219,33 @@ export async function generateCollegeDocumentPdf({
 
     // Digital QR Verification Block (Left Bottom)
     if (qrDataUrl) {
-      doc.addImage(qrDataUrl, "PNG", margin + 12, 178, 26, 26);
+      doc.addImage(qrDataUrl, "PNG", margin + 12, 176, 25, 25);
       doc.setFont("helvetica", "bold");
       doc.setFontSize(8);
       doc.setTextColor(30, 58, 138);
-      doc.text("DIGITAL QR VERIFICATION", margin + 42, 184);
+      doc.text("DIGITAL QR VERIFICATION", margin + 40, 182);
 
       doc.setFont("helvetica", "normal");
-      doc.setFontSize(7);
+      doc.setFontSize(6.8);
       doc.setTextColor(71, 85, 105);
-      doc.text("Scan with mobile camera to verify authentic college record", margin + 42, 189);
-      doc.text(`Ref ID: PSNA/${requestId}`, margin + 42, 194);
-      doc.text(`SHA-256: ${hash.slice(0, 26)}...`, margin + 42, 199);
+      doc.text("Scan with mobile camera to verify college authenticity", margin + 40, 187);
+      doc.text(`Ref ID: PSNA/${requestId}`, margin + 40, 192);
+      doc.text(`SHA-256: ${hash.slice(0, 24)}...`, margin + 40, 197);
     }
   }
 
   // -------------------------------------------------------------
   // DOCUMENT TYPE 2: FEE STRUCTURE / CERTIFICATE (Exact replica)
+  // Sample: media_1790575770000.png
   // -------------------------------------------------------------
   else if (documentType === "Fee Structure") {
-    // Right-aligned Date
+    // Right-aligned Date: Date: 05.11.2024
     doc.setFont("helvetica", "normal");
     doc.setFontSize(11);
     doc.setTextColor(0, 0, 0);
-    doc.text(`Date: ${dateStr}`, pageWidth - margin - 5, 54, { align: "right" });
+    doc.text(`Date: ${dateDots}`, pageWidth - margin - 5, 54, { align: "right" });
 
-    // Underlined CERTIFICATE Title
+    // Centered Underlined CERTIFICATE Title
     doc.setFont("helvetica", "bold");
     doc.setFontSize(14);
     doc.text("CERTIFICATE", pageWidth / 2, 64, { align: "center" });
@@ -223,15 +261,14 @@ export async function generateCollegeDocumentPdf({
     doc.setFontSize(10.5);
     doc.setLineHeightFactor(1.4);
 
-    const para = `This is to certify that Mr./Ms. ${studentName.toUpperCase()} is a bonafide student of this college studying in ${ordinalYear} Year B.Tech – ${deptName.toUpperCase()} during the academic year 2024-2025. The duration of the Programme is four years. The student is liable to pay the following college fees from the academic years 2024-25 to 2027-28.`;
+    const para = `This is to certify that Mr./Ms. ${studentName.toUpperCase()} is a bonafide student of this college studying in ${wordYear} Year B.Tech – ${deptName.toUpperCase()} during the academic year 2024-2025. The duration of the Programme is four years. The student is liable to pay the following college fees from the academic years 2024-25 to 2027-28.`;
     const splitPara = doc.splitTextToSize(para, contentWidth);
     doc.text(splitPara, contentLeft, y);
     y += splitPara.length * 5.5 + 4;
 
-    // 4-Year Authentic Fee Schedule Table
+    // 4-Year Authentic Fee Schedule Table (Exact reproduction)
     const colX = [contentLeft, contentLeft + 68, contentLeft + 95, contentLeft + 122, contentLeft + 149];
     const totalW = contentWidth;
-    const rowH = 7;
 
     // Header Row
     doc.setDrawColor(100, 116, 139);
@@ -259,7 +296,7 @@ export async function generateCollegeDocumentPdf({
     }
     y += 11;
 
-    // Table Rows
+    // Table Data Rows
     const rows = [
       {
         name: ["Tuition Fee, Special Fee and Accreditation", "Fee"],
@@ -312,7 +349,7 @@ export async function generateCollegeDocumentPdf({
 
     y += 5;
 
-    // Grand total statement
+    // Grand total statement in words
     doc.setFont("helvetica", "bold");
     doc.setFontSize(9);
     doc.text(
@@ -338,16 +375,9 @@ export async function generateCollegeDocumentPdf({
     );
     y += 12;
 
-    // Signatures and Seals
+    // Seals and Signatures
     if (collegeSealImg) {
       doc.addImage(collegeSealImg, "PNG", contentLeft + 8, y - 4, 30, 30);
-    } else {
-      doc.setDrawColor(30, 58, 138);
-      doc.circle(contentLeft + 22, y + 10, 14);
-      doc.setFont("helvetica", "bold");
-      doc.setFontSize(7);
-      doc.text("P.S.N.A. COLLEGE OF ENGG & TECH", contentLeft + 22, y + 7, { align: "center" });
-      doc.text("* Dindigul *", contentLeft + 22, y + 12, { align: "center" });
     }
 
     if (registrarSignImg) {
@@ -359,7 +389,7 @@ export async function generateCollegeDocumentPdf({
       doc.text("REGISTRAR (ACADEMIC)", pageWidth - margin - 35, y + 18, { align: "center" });
     }
 
-    // Digital QR
+    // Digital QR Verification Code in Center
     if (qrDataUrl) {
       doc.addImage(qrDataUrl, "PNG", pageWidth / 2 - 12, y - 2, 24, 24);
       doc.setFont("courier", "normal");
@@ -371,88 +401,111 @@ export async function generateCollegeDocumentPdf({
 
   // -------------------------------------------------------------
   // DOCUMENT TYPE 3: BUS FEE STRUCTURE / TRANSPORT RECEIPT (Exact)
+  // Sample: media_1790575778460.jpg
   // -------------------------------------------------------------
   else if (documentType === "Bus Fee Structure") {
-    // Outer boundary card for receipt style
-    const boxX = margin + 10;
-    const boxW = pageWidth - (margin + 10) * 2;
-    let y = 52;
+    // Centered receipt slip container
+    const boxX = 22;
+    const boxW = pageWidth - boxX * 2;
+    let y = 16;
 
     doc.setDrawColor(30, 58, 138);
     doc.setLineWidth(0.8);
-    doc.rect(boxX, y, boxW, 195);
+    doc.rect(boxX, y, boxW, 255);
 
-    // STUDENT COPY Header Banner
+    // STUDENT COPY Header
     doc.setFont("helvetica", "bold");
-    doc.setFontSize(11);
+    doc.setFontSize(10.5);
     doc.setTextColor(30, 41, 59);
-    doc.text("STUDENT COPY", pageWidth / 2, y + 7, { align: "center" });
+    doc.text("STUDENT COPY", pageWidth / 2, y + 8, { align: "center" });
 
-    doc.setFontSize(16);
-    doc.setTextColor(30, 58, 138);
-    doc.text("PSNA", pageWidth / 2, y + 14, { align: "center" });
+    // College Logo / Header
+    if (psnaLogoImg) {
+      doc.addImage(psnaLogoImg, "PNG", pageWidth / 2 - 42, y + 12, 84, 22);
+      y += 38;
+    } else {
+      doc.setFontSize(16);
+      doc.setTextColor(30, 58, 138);
+      doc.text("PSNA", pageWidth / 2, y + 16, { align: "center" });
+      doc.setFontSize(9.5);
+      doc.setTextColor(30, 41, 59);
+      doc.text("COLLEGE OF ENGINEERING & TECHNOLOGY", pageWidth / 2, y + 22, { align: "center" });
+      doc.setFontSize(8);
+      doc.text("(An Autonomous Institution)", pageWidth / 2, y + 26, { align: "center" });
+      y += 32;
+    }
 
-    doc.setFontSize(9.5);
-    doc.setTextColor(30, 41, 59);
-    doc.text("COLLEGE OF ENGINEERING & TECHNOLOGY", pageWidth / 2, y + 19, { align: "center" });
-    doc.setFontSize(8);
-    doc.text("(An Autonomous Institution)", pageWidth / 2, y + 23, { align: "center" });
-    doc.text("Kothandaraman Nagar, Dindigul - 624 622.", pageWidth / 2, y + 27, { align: "center" });
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(8.5);
+    doc.setTextColor(51, 65, 85);
+    doc.text("Kothandaraman Nagar, Dindigul - 624 622.", pageWidth / 2, y, { align: "center" });
 
-    y += 30;
+    y += 4;
+    doc.setDrawColor(30, 58, 138);
+    doc.setLineWidth(0.6);
+    doc.line(boxX, y, boxX + boxW, y);
+
+    // Banner: TRANSPORT FEES RECEIPT
+    y += 1;
     doc.setFillColor(241, 245, 249);
-    doc.rect(boxX, y, boxW, 7, "FD");
+    doc.rect(boxX, y, boxW, 8, "FD");
     doc.setFont("helvetica", "bold");
-    doc.setFontSize(9.5);
-    doc.text("TRANSPORT FEES RECEIPT", pageWidth / 2, y + 5, { align: "center" });
+    doc.setFontSize(10.5);
+    doc.setTextColor(30, 58, 138);
+    doc.text("TRANSPORT FEES RECEIPT", pageWidth / 2, y + 5.5, { align: "center" });
 
-    y += 10;
-    // Details Grid
+    y += 8;
+    doc.line(boxX, y, boxX + boxW, y);
+
+    y += 7;
+    // Details Grid (2 columns)
     doc.setFont("helvetica", "normal");
     doc.setFontSize(9);
+    doc.setTextColor(15, 23, 42);
     doc.text(`R.No. :  ${requestId}`, boxX + 6, y);
-    doc.text(`Date :  ${dateStr}`, boxX + boxW - 35, y);
+    doc.text(`Date :  ${dateDots}`, boxX + boxW - 35, y);
 
     y += 6;
     doc.text(`Name :  ${studentName.toUpperCase()}`, boxX + 6, y);
 
     y += 6;
     doc.text(`Roll No. :  24293`, boxX + 6, y);
-    doc.text(`Reg No. :  ${registerNo}`, boxX + boxW / 2, y);
+    doc.text(`Reg No. :  ${registerNo}`, boxX + boxW / 2 + 5, y);
 
     y += 6;
-    doc.text(`Year :  ${ordinalYear} Year`, boxX + 6, y);
-    doc.text(`Branch :  B.Tech - ${deptName}`, boxX + boxW / 2, y);
+    doc.text(`Year :  ${romanYear} Year`, boxX + 6, y);
+    doc.text(`Branch :  B.Tech - ${deptName}`, boxX + boxW / 2 + 5, y);
 
     y += 8;
-    // Table
+    // Table Header
     doc.rect(boxX, y, boxW, 8);
     doc.setFont("helvetica", "bold");
+    doc.setFontSize(8.5);
     doc.text("S.No.", boxX + 4, y + 5.5);
-    doc.text("Description", boxX + 30, y + 5.5);
+    doc.text("Description", boxX + 28, y + 5.5);
     doc.text("Amount (Rs.)", boxX + boxW - 25, y + 5.5);
 
     y += 8;
     const tableTopY = y;
-    doc.rect(boxX, y, boxW, 68);
+    doc.rect(boxX, y, boxW, 72);
 
     doc.setFont("helvetica", "normal");
-    doc.text("1", boxX + 6, y + 12);
-    doc.text("Bus Route :  MADURAI / DINDIGUL / PALANI", boxX + 30, y + 12);
+    doc.text("1", boxX + 6, y + 14);
+    doc.text("Bus Route :  MADURAI / DINDIGUL / PALANI", boxX + 28, y + 14);
 
-    doc.text("2", boxX + 6, y + 24);
-    doc.text("Boarding Point :  COLLEGE TRANSIT POINT", boxX + 30, y + 24);
+    doc.text("2", boxX + 6, y + 28);
+    doc.text("Boarding Point :  COLLEGE TRANSIT POINT", boxX + 28, y + 28);
 
-    doc.text("3", boxX + 6, y + 36);
-    doc.text("Annual Institutional Bus Fee Schedule", boxX + 30, y + 36);
-    doc.text("35,400.00", boxX + boxW - 25, y + 36);
+    doc.text("3", boxX + 6, y + 42);
+    doc.text("Annual Institutional Bus Fee Schedule", boxX + 28, y + 42);
+    doc.text("35,400.00", boxX + boxW - 25, y + 42);
 
     // Diagonal "CASH RECEIVED" stamp from authentic sample
     if (transportStampImg) {
-      doc.addImage(transportStampImg, "PNG", boxX + 45, tableTopY + 12, 58, 44);
+      doc.addImage(transportStampImg, "PNG", boxX + 40, tableTopY + 14, 66, 48);
     }
 
-    y += 68;
+    y += 72;
     // Total Row
     doc.setFillColor(248, 250, 252);
     doc.rect(boxX, y, boxW, 8, "FD");
@@ -471,7 +524,7 @@ export async function generateCollegeDocumentPdf({
     doc.text("Transport Department", boxX + 25, y, { align: "center" });
     doc.text("Cashier Sign", boxX + boxW - 25, y, { align: "center" });
 
-    // QR Verification at bottom
+    // QR Verification at center bottom
     if (qrDataUrl) {
       doc.addImage(qrDataUrl, "PNG", pageWidth / 2 - 9, y - 10, 18, 18);
     }
@@ -484,7 +537,7 @@ export async function generateCollegeDocumentPdf({
     doc.setFont("helvetica", "normal");
     doc.setFontSize(11);
     doc.setTextColor(0, 0, 0);
-    doc.text(`Date: ${dateStr}`, pageWidth - margin - 5, 54, { align: "right" });
+    doc.text(`Date: ${dateDots}`, pageWidth - margin - 5, 54, { align: "right" });
 
     doc.setFont("helvetica", "bold");
     doc.setFontSize(14);
@@ -533,8 +586,8 @@ export async function generateCollegeDocumentPdf({
     }
   }
 
-  // Draw Official 3-Column Contact Footer
-  if (footerImg) {
+  // Draw Official 3-Column Contact Footer (Only for Letterhead Documents)
+  if (footerImg && documentType !== "Bus Fee Structure") {
     doc.addImage(footerImg, "PNG", margin, pageHeight - 28, pageWidth - margin * 2, 20);
   }
 
@@ -596,13 +649,4 @@ function drawTable(doc, startX, startY, headers, rows) {
   });
 
   return curY;
-}
-
-function getOrdinalYear(year) {
-  const y = parseInt(year, 10);
-  if (y === 1) return "1st";
-  if (y === 2) return "2nd";
-  if (y === 3) return "3rd";
-  if (y === 4) return "4th";
-  return `${year || "Current"}`;
 }

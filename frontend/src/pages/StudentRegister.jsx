@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import { User, Mail, Calendar, BookOpen, Hash, ArrowRight, ArrowLeft, AlertCircle, CheckCircle2, Building2 } from "lucide-react";
+import { User, Mail, Calendar, BookOpen, Hash, ArrowRight, ArrowLeft, AlertCircle, CheckCircle2, Building2, Sun, Moon } from "lucide-react";
 import api from "../services/api";
 
 const DEPARTMENTS = [
@@ -17,6 +17,20 @@ const DEPARTMENTS = [
 
 export default function StudentRegister() {
   const navigate = useNavigate();
+
+  // Dark / Light Theme System
+  const [theme, setTheme] = useState(() => {
+    return localStorage.getItem("portal_theme") || "light";
+  });
+
+  useEffect(() => {
+    document.documentElement.setAttribute("data-theme", theme);
+    localStorage.setItem("portal_theme", theme);
+  }, [theme]);
+
+  const toggleTheme = () => {
+    setTheme((prev) => (prev === "dark" ? "light" : "dark"));
+  };
 
   const [formData, setFormData] = useState({
     name: "",
@@ -92,6 +106,19 @@ export default function StudentRegister() {
 
   return (
     <div className="auth-page-container">
+      {/* Floating Dark / Light Theme Toggle */}
+      <div className="auth-theme-floating">
+        <button
+          type="button"
+          className="btn-theme-toggle"
+          onClick={toggleTheme}
+          title={`Switch to ${theme === "dark" ? "Light" : "Dark"} Mode`}
+        >
+          {theme === "dark" ? <Sun size={17} className="text-amber" /> : <Moon size={17} />}
+          <span>{theme === "dark" ? "Light" : "Dark"}</span>
+        </button>
+      </div>
+
       <div className="auth-bg-decorations">
         <div className="decor-circle circle-1"></div>
         <div className="decor-circle circle-2"></div>

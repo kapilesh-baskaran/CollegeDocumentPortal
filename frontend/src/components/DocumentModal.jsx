@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import QRCode from "qrcode";
-import { Download, Printer, X, ExternalLink, ShieldCheck } from "lucide-react";
+import { Download, Printer, X, ShieldCheck } from "lucide-react";
 import { generateCollegeDocumentPdf } from "../utils/generatePdf";
 
 export default function DocumentModal({ isOpen, onClose, request, student }) {
@@ -74,15 +74,46 @@ export default function DocumentModal({ isOpen, onClose, request, student }) {
     return `${n || "Current"}`;
   };
 
+  const getWordYear = (n) => {
+    const num = parseInt(n, 10);
+    if (num === 1) return "First";
+    if (num === 2) return "Second";
+    if (num === 3) return "Third";
+    if (num === 4) return "Final";
+    return "First";
+  };
+
+  const getRomanYear = (n) => {
+    const num = parseInt(n, 10);
+    if (num === 1) return "I";
+    if (num === 2) return "II";
+    if (num === 3) return "III";
+    if (num === 4) return "IV";
+    return "I";
+  };
+
   const today = new Date();
-  const dateFormatted = `${String(today.getDate()).padStart(2, "0")}-${String(today.getMonth() + 1).padStart(2, "0")}-${today.getFullYear()}`;
+  const dateHyphen = `${String(today.getDate()).padStart(2, "0")}-${String(today.getMonth() + 1).padStart(2, "0")}-${today.getFullYear()}`;
+  const dateDots = `${String(today.getDate()).padStart(2, "0")}.${String(today.getMonth() + 1).padStart(2, "0")}.${today.getFullYear()}`;
+
+  let cleanPurpose = request.purpose && request.purpose.trim() ? request.purpose.trim() : "an education loan";
+  if (cleanPurpose.toLowerCase().startsWith("apply for ")) {
+    cleanPurpose = cleanPurpose.slice(10);
+  } else if (cleanPurpose.toLowerCase().startsWith("for ")) {
+    cleanPurpose = cleanPurpose.slice(4);
+  }
+  if (cleanPurpose.toLowerCase() === "education loan processing" || cleanPurpose.toLowerCase() === "education loan") {
+    cleanPurpose = "an education loan";
+  }
+
+  const isTransportReceipt = request.document_type === "Bus Fee Structure";
 
   return (
     <div className="modal-backdrop" onClick={onClose}>
       <div
         className="modal-container document-preview-modal"
         onClick={(e) => e.stopPropagation()}
-        style={{ maxWidth: "860px" }}
+        style={{ maxWidth: isTransportReceipt ? "680px" : "860px" }}
       >
         {/* Modal Top Bar */}
         <div className="modal-header">
@@ -112,34 +143,37 @@ export default function DocumentModal({ isOpen, onClose, request, student }) {
         </div>
 
         {/* Modal Scrollable Body: Authentic Certificate Paper */}
-        <div className="modal-body certificate-paper-wrap" style={{ background: "#e2e8f0", padding: "20px" }}>
+        <div className="modal-body certificate-paper-wrap" style={{ background: "#94a3b8", padding: "24px" }}>
           <div
             className="certificate-sheet printable-area"
             style={{
               background: "#ffffff",
               color: "#0f172a",
-              boxShadow: "0 10px 30px rgba(0,0,0,0.15)",
-              padding: "24px 30px",
+              boxShadow: "0 12px 36px rgba(0,0,0,0.25)",
+              padding: isTransportReceipt ? "24px" : "28px 36px",
               position: "relative",
               borderRadius: "4px",
-              minHeight: "850px",
+              minHeight: isTransportReceipt ? "700px" : "850px",
               display: "flex",
-              flexDirection: "column"
+              flexDirection: "column",
+              fontFamily: "'Segoe UI', Roboto, Helvetica, Arial, sans-serif"
             }}
           >
-            {/* Authentic PSNA College Letterhead */}
-            <div style={{ marginBottom: "16px" }}>
-              <img
-                src="/psna-letterhead.png"
-                alt="PSNA College of Engineering and Technology Letterhead"
-                style={{ width: "100%", height: "auto", display: "block" }}
-              />
-            </div>
+            {/* Authentic PSNA College Letterhead (Not on Transport slip) */}
+            {!isTransportReceipt && (
+              <div style={{ marginBottom: "16px" }}>
+                <img
+                  src="/psna-letterhead.png"
+                  alt="PSNA College of Engineering and Technology Letterhead"
+                  style={{ width: "100%", height: "auto", display: "block" }}
+                />
+              </div>
+            )}
 
             {/* Left Margin "Building the Future" script and body container */}
             <div style={{ display: "flex", flex: 1, position: "relative" }}>
-              {request.document_type !== "Bus Fee Structure" && (
-                <div style={{ width: "36px", marginRight: "14px", flexShrink: 0 }}>
+              {!isTransportReceipt && (
+                <div style={{ width: "36px", marginRight: "16px", flexShrink: 0 }}>
                   <img
                     src="/building-future.png"
                     alt="Building the Future"
@@ -150,38 +184,38 @@ export default function DocumentModal({ isOpen, onClose, request, student }) {
 
               {/* Main Document Content Area */}
               <div style={{ flex: 1 }}>
-                {/* 1. BONAFIDE CERTIFICATE */}
+                {/* 1. BONAFIDE CERTIFICATE (Exact replica: media_1790575764431.png) */}
                 {request.document_type === "Bonafide Certificate" && (
                   <div>
-                    <div style={{ textAlign: "right", fontWeight: 700, fontSize: "0.95rem", marginBottom: "16px" }}>
-                      Date: {dateFormatted}
+                    <div style={{ textAlign: "right", fontWeight: 700, fontSize: "0.95rem", marginBottom: "18px" }}>
+                      Date:{dateHyphen}
                     </div>
 
-                    <div style={{ textAlign: "center", marginBottom: "26px" }}>
-                      <h2 style={{ fontSize: "1.5rem", fontWeight: 800, margin: 0, letterSpacing: "0.5px" }}>
+                    <div style={{ textAlign: "center", marginBottom: "28px" }}>
+                      <h2 style={{ fontSize: "1.55rem", fontWeight: 800, margin: 0, letterSpacing: "0.5px" }}>
                         Bonafide Certificate
                       </h2>
                     </div>
 
-                    <div style={{ fontSize: "1.05rem", lineHeight: 1.8, color: "#1e293b", marginBottom: "20px" }}>
+                    <div style={{ fontSize: "1.06rem", lineHeight: 1.85, color: "#1e293b", marginBottom: "20px" }}>
                       <p>
                         This is to certify that{" "}
-                        <strong style={{ fontSize: "1.1rem" }}>Mr./Ms. {studentData?.name}</strong> is a
+                        <strong style={{ fontSize: "1.12rem" }}>Mr./Ms. {studentData?.name}</strong> is a
                         bonafide student of this college, studying in{" "}
                         <strong>{getOrdinal(studentData?.year)} year B.Tech. Degree in {studentData?.department}</strong> during
                         the academic year <strong>2024-2025</strong>.
                       </p>
                       <p style={{ marginTop: "24px" }}>
-                        This certificate is issued to apply for {request.purpose || "an education loan"}.
+                        This certificate is issued to apply for {cleanPurpose}.
                       </p>
                     </div>
 
                     {/* Signatures & Stamp Row */}
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginTop: "60px" }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginTop: "65px" }}>
                       {/* Left: QR Verification */}
-                      <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
                         {qrCodeUrl && (
-                          <img src={qrCodeUrl} alt="Verification QR" style={{ width: "70px", height: "70px" }} />
+                          <img src={qrCodeUrl} alt="Verification QR" style={{ width: "72px", height: "72px" }} />
                         )}
                         <div style={{ fontSize: "0.72rem", color: "#64748b" }}>
                           <div style={{ fontWeight: 800, color: "#1e3a8a" }}>DIGITAL QR VERIFICATION</div>
@@ -195,18 +229,18 @@ export default function DocumentModal({ isOpen, onClose, request, student }) {
                         <img
                           src="/hod-stamp.png"
                           alt="HOD Stamp"
-                          style={{ width: "170px", height: "auto", display: "inline-block" }}
+                          style={{ width: "190px", height: "auto", display: "inline-block" }}
                         />
                       </div>
                     </div>
                   </div>
                 )}
 
-                {/* 2. FEE STRUCTURE / CERTIFICATE */}
+                {/* 2. FEE STRUCTURE / CERTIFICATE (Exact replica: media_1790575770000.png) */}
                 {request.document_type === "Fee Structure" && (
                   <div>
-                    <div style={{ textAlign: "right", fontSize: "0.95rem", marginBottom: "10px" }}>
-                      Date: {dateFormatted}
+                    <div style={{ textAlign: "right", fontSize: "0.95rem", marginBottom: "12px" }}>
+                      Date: {dateDots}
                     </div>
 
                     <div style={{ textAlign: "center", marginBottom: "18px" }}>
@@ -228,7 +262,7 @@ export default function DocumentModal({ isOpen, onClose, request, student }) {
                         This is to certify that{" "}
                         <strong>Mr./Ms. {studentData?.name?.toUpperCase()}</strong> is a bonafide student of this
                         college studying in{" "}
-                        <strong>{getOrdinal(studentData?.year)} Year B.Tech – {studentData?.department?.toUpperCase()}</strong> during
+                        <strong>{getWordYear(studentData?.year)} Year B.Tech – {studentData?.department?.toUpperCase()}</strong> during
                         the academic year <strong>2024-2025</strong>. The duration of the Programme is four years. The
                         student is liable to pay the following college fees from the academic years{" "}
                         <strong>2024-25 to 2027-28</strong>.
@@ -337,61 +371,84 @@ export default function DocumentModal({ isOpen, onClose, request, student }) {
                           alt="Registrar Sign"
                           style={{ width: "160px", height: "auto" }}
                         />
+                        <div style={{ fontWeight: 800, fontSize: "0.85rem", marginTop: "2px" }}>
+                          REGISTRAR (ACADEMIC)
+                        </div>
                       </div>
                     </div>
                   </div>
                 )}
 
-                {/* 3. BUS FEE STRUCTURE / TRANSPORT RECEIPT */}
+                {/* 3. BUS FEE STRUCTURE / TRANSPORT RECEIPT (Exact replica: media_1790575778460.jpg) */}
                 {request.document_type === "Bus Fee Structure" && (
-                  <div style={{ border: "2px solid #1e3a8a", padding: "16px", borderRadius: "6px" }}>
-                    <div style={{ textAlign: "center", borderBottom: "1.5px solid #1e3a8a", paddingBottom: "8px", marginBottom: "12px" }}>
-                      <div style={{ fontWeight: 800, fontSize: "0.85rem" }}>STUDENT COPY</div>
-                      <div style={{ fontWeight: 900, fontSize: "1.4rem", color: "#1e3a8a" }}>PSNA</div>
-                      <div style={{ fontWeight: 700, fontSize: "0.95rem" }}>COLLEGE OF ENGINEERING &amp; TECHNOLOGY</div>
-                      <div style={{ fontSize: "0.75rem", color: "#475569" }}>(An Autonomous Institution) &bull; Dindigul - 624 622</div>
-                      <div style={{ background: "#f1f5f9", padding: "4px", marginTop: "6px", fontWeight: 800, fontSize: "0.9rem" }}>
+                  <div style={{ border: "2px solid #1e3a8a", padding: "18px", borderRadius: "4px", position: "relative" }}>
+                    {/* Header */}
+                    <div style={{ textAlign: "center", borderBottom: "1.5px solid #1e3a8a", paddingBottom: "10px", marginBottom: "14px" }}>
+                      <div style={{ fontWeight: 800, fontSize: "0.85rem", color: "#334155", letterSpacing: "1px" }}>
+                        STUDENT COPY
+                      </div>
+                      <div style={{ margin: "6px auto", maxWidth: "260px" }}>
+                        <img src="/psna-logo.png" alt="PSNA Logo" style={{ width: "100%", height: "auto" }} />
+                      </div>
+                      <div style={{ fontSize: "0.8rem", color: "#475569" }}>
+                        Kothandaraman Nagar, Dindigul - 624 622.
+                      </div>
+                      <div
+                        style={{
+                          background: "#f1f5f9",
+                          padding: "5px",
+                          marginTop: "8px",
+                          fontWeight: 800,
+                          fontSize: "0.95rem",
+                          borderTop: "1px solid #1e3a8a",
+                          borderBottom: "1px solid #1e3a8a",
+                          color: "#1e3a8a"
+                        }}
+                      >
                         TRANSPORT FEES RECEIPT
                       </div>
                     </div>
 
-                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "6px", fontSize: "0.82rem", marginBottom: "10px" }}>
+                    {/* Details Grid */}
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "6px", fontSize: "0.84rem", marginBottom: "12px", color: "#0f172a" }}>
                       <div><strong>R.No. :</strong> {request.request_id}</div>
-                      <div style={{ textAlign: "right" }}><strong>Date :</strong> {dateFormatted}</div>
+                      <div style={{ textAlign: "right" }}><strong>Date :</strong> {dateDots}</div>
                       <div><strong>Name :</strong> {studentData?.name?.toUpperCase()}</div>
+                      <div style={{ textAlign: "right" }}><strong>Roll No. :</strong> 24293</div>
+                      <div><strong>Year :</strong> {getRomanYear(studentData?.year)} Year</div>
                       <div style={{ textAlign: "right" }}><strong>Reg No :</strong> {studentData?.register_no}</div>
-                      <div><strong>Year :</strong> {getOrdinal(studentData?.year)} Year</div>
-                      <div style={{ textAlign: "right" }}><strong>Branch :</strong> B.Tech - {studentData?.department}</div>
+                      <div style={{ gridColumn: "span 2" }}><strong>Branch :</strong> B.Tech - {studentData?.department}</div>
                     </div>
 
-                    <div style={{ border: "1px solid #1e3a8a", position: "relative", marginBottom: "10px" }}>
-                      <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.82rem" }}>
+                    {/* Table with Stamp */}
+                    <div style={{ border: "1px solid #1e3a8a", position: "relative", marginBottom: "12px" }}>
+                      <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.84rem" }}>
                         <thead>
                           <tr style={{ borderBottom: "1px solid #1e3a8a", background: "#f8fafc" }}>
-                            <th style={{ padding: "6px", width: "40px" }}>S.No</th>
+                            <th style={{ padding: "6px", width: "45px" }}>S.No</th>
                             <th style={{ padding: "6px", textAlign: "left" }}>Description</th>
                             <th style={{ padding: "6px", textAlign: "right" }}>Amount (Rs.)</th>
                           </tr>
                         </thead>
                         <tbody>
                           <tr>
-                            <td style={{ padding: "6px", textAlign: "center" }}>1</td>
-                            <td style={{ padding: "6px" }}>Bus Route : MADURAI / DINDIGUL / PALANI</td>
-                            <td style={{ padding: "6px", textAlign: "right" }}>-</td>
+                            <td style={{ padding: "8px 6px", textAlign: "center" }}>1</td>
+                            <td style={{ padding: "8px 6px" }}>Bus Route : MADURAI / DINDIGUL / PALANI</td>
+                            <td style={{ padding: "8px 6px", textAlign: "right" }}>-</td>
                           </tr>
                           <tr>
-                            <td style={{ padding: "6px", textAlign: "center" }}>2</td>
-                            <td style={{ padding: "6px" }}>Boarding Point : COLLEGE CAMPUS TRANSIT</td>
-                            <td style={{ padding: "6px", textAlign: "right" }}>-</td>
+                            <td style={{ padding: "8px 6px", textAlign: "center" }}>2</td>
+                            <td style={{ padding: "8px 6px" }}>Boarding Point : COLLEGE TRANSIT POINT</td>
+                            <td style={{ padding: "8px 6px", textAlign: "right" }}>-</td>
                           </tr>
                           <tr>
-                            <td style={{ padding: "6px", textAlign: "center" }}>3</td>
-                            <td style={{ padding: "6px" }}>Annual Bus Transport Fee</td>
-                            <td style={{ padding: "6px", textAlign: "right" }}>35,400.00</td>
+                            <td style={{ padding: "8px 6px", textAlign: "center" }}>3</td>
+                            <td style={{ padding: "8px 6px" }}>Annual Institutional Bus Fee Schedule</td>
+                            <td style={{ padding: "8px 6px", textAlign: "right" }}>35,400.00</td>
                           </tr>
-                          <tr style={{ borderTop: "1.5px solid #1e3a8a", fontWeight: 800 }}>
-                            <td colSpan="2" style={{ padding: "6px", textAlign: "right" }}>TOTAL</td>
-                            <td style={{ padding: "6px", textAlign: "right" }}>Rs. 35,400.00</td>
+                          <tr style={{ borderTop: "1.5px solid #1e3a8a", fontWeight: 800, background: "#f8fafc" }}>
+                            <td colSpan="2" style={{ padding: "8px 6px", textAlign: "right" }}>TOTAL</td>
+                            <td style={{ padding: "8px 6px", textAlign: "right" }}>Rs. 35,400.00</td>
                           </tr>
                         </tbody>
                       </table>
@@ -402,22 +459,22 @@ export default function DocumentModal({ isOpen, onClose, request, student }) {
                         alt="Cash Received Stamp"
                         style={{
                           position: "absolute",
-                          left: "25%",
-                          top: "10px",
-                          width: "180px",
-                          opacity: 0.9,
+                          left: "22%",
+                          top: "6px",
+                          width: "210px",
+                          opacity: 0.92,
                           pointerEvents: "none"
                         }}
                       />
                     </div>
 
-                    <div style={{ fontSize: "0.8rem", fontStyle: "italic", marginBottom: "16px" }}>
+                    <div style={{ fontSize: "0.82rem", fontStyle: "italic", marginBottom: "18px", color: "#1e293b" }}>
                       Rupees in words : Thirty five thousand four hundred only.
                     </div>
 
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: "0.82rem", fontWeight: 700 }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: "0.84rem", fontWeight: 700 }}>
                       <div>Transport Department</div>
-                      {qrCodeUrl && <img src={qrCodeUrl} alt="QR Code" style={{ width: "48px", height: "48px" }} />}
+                      {qrCodeUrl && <img src={qrCodeUrl} alt="QR Code" style={{ width: "52px", height: "52px" }} />}
                       <div>Cashier Sign</div>
                     </div>
                   </div>
@@ -427,7 +484,7 @@ export default function DocumentModal({ isOpen, onClose, request, student }) {
                 {request.document_type === "Hostel Fee Structure" && (
                   <div>
                     <div style={{ textAlign: "right", fontSize: "0.95rem", marginBottom: "10px" }}>
-                      Date: {dateFormatted}
+                      Date: {dateDots}
                     </div>
 
                     <div style={{ textAlign: "center", marginBottom: "18px" }}>
@@ -485,21 +542,28 @@ export default function DocumentModal({ isOpen, onClose, request, student }) {
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "30px" }}>
                       <img src="/college-seal.png" alt="College Seal" style={{ width: "95px", height: "auto" }} />
                       {qrCodeUrl && <img src={qrCodeUrl} alt="QR Code" style={{ width: "60px", height: "60px" }} />}
-                      <img src="/registrar-sign.png" alt="Registrar Signature" style={{ width: "160px", height: "auto" }} />
+                      <div style={{ textAlign: "center" }}>
+                        <img src="/registrar-sign.png" alt="Registrar Signature" style={{ width: "160px", height: "auto" }} />
+                        <div style={{ fontWeight: 800, fontSize: "0.85rem", marginTop: "2px" }}>
+                          REGISTRAR (ACADEMIC)
+                        </div>
+                      </div>
                     </div>
                   </div>
                 )}
               </div>
             </div>
 
-            {/* Official 3-Column Contact Footer */}
-            <div style={{ marginTop: "auto", paddingTop: "24px" }}>
-              <img
-                src="/psna-footer.png"
-                alt="PSNA College Contact Footer"
-                style={{ width: "100%", height: "auto", display: "block" }}
-              />
-            </div>
+            {/* Official 3-Column Contact Footer (Only for Letterhead Documents) */}
+            {!isTransportReceipt && (
+              <div style={{ marginTop: "auto", paddingTop: "24px" }}>
+                <img
+                  src="/psna-footer.png"
+                  alt="PSNA College Contact Footer"
+                  style={{ width: "100%", height: "auto", display: "block" }}
+                />
+              </div>
+            )}
           </div>
         </div>
 

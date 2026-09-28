@@ -140,20 +140,63 @@ export default function AdminDashboard() {
     }
   };
 
-  const handleExportCsv = async () => {
+  const handleExportCsv = () => {
     try {
       setExportingCsv(true);
-      const params = {};
-      if (selectedStatus !== "All") params.status = selectedStatus;
-      if (selectedDocType !== "All") params.documentType = selectedDocType;
-      if (search.trim()) params.search = search.trim();
+      const dataToExport = requests;
+      if (!dataToExport || dataToExport.length === 0) {
+        alert("No request records available to export for the current filters.");
+        return;
+      }
 
-      const res = await api.get("/admin/requests/export-csv", {
-        params,
-        responseType: "blob"
+      const headers = [
+        "Request ID",
+        "Student Name",
+        "Register No",
+        "Email",
+        "Department",
+        "Academic Year",
+        "Section",
+        "Document Type",
+        "Purpose",
+        "Required By Date",
+        "Status",
+        "Admin Remarks",
+        "Submitted On",
+        "Verification Hash",
+        "Scan Count"
+      ];
+
+      const escapeCsv = (str) => {
+        if (str === null || str === undefined) return '""';
+        const val = String(str).replace(/"/g, '""');
+        return `"${val}"`;
+      };
+
+      // Add \uFEFF BOM for Microsoft Excel / Google Sheets compatibility
+      let csvContent = "\uFEFF" + headers.join(",") + "\n";
+      dataToExport.forEach((r) => {
+        const row = [
+          escapeCsv(r.request_id),
+          escapeCsv(r.name),
+          escapeCsv(r.register_no),
+          escapeCsv(r.email),
+          escapeCsv(r.department),
+          escapeCsv(r.year),
+          escapeCsv(r.section),
+          escapeCsv(r.document_type),
+          escapeCsv(r.purpose),
+          escapeCsv(r.required_by ? new Date(r.required_by).toLocaleDateString("en-IN") : "N/A"),
+          escapeCsv(r.status),
+          escapeCsv(r.admin_remarks || ""),
+          escapeCsv(r.created_at ? new Date(r.created_at).toLocaleString("en-IN") : "N/A"),
+          escapeCsv(r.verification_hash || "N/A"),
+          escapeCsv(r.scan_count || 0)
+        ];
+        csvContent += row.join(",") + "\n";
       });
 
-      const blob = new Blob([res.data], { type: "text/csv;charset=utf-8;" });
+      const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;

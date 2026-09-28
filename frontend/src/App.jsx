@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 import Login from "./pages/Login";
 import StudentRegister from "./pages/StudentRegister";
@@ -7,6 +8,11 @@ import AdminDashboard from "./pages/AdminDashboard";
 import VerifyDocument from "./pages/VerifyDocument";
 
 export default function App() {
+  useEffect(() => {
+    const savedTheme = localStorage.getItem("portal_theme") || "light";
+    document.documentElement.setAttribute("data-theme", savedTheme);
+  }, []);
+
   return (
     <Router>
       <Routes>

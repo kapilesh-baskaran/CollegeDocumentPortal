@@ -1,10 +1,24 @@
 import { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import { KeyRound, Mail, ArrowRight, ArrowLeft, AlertCircle, CheckCircle2, Building2 } from "lucide-react";
+import { KeyRound, Mail, ArrowRight, ArrowLeft, AlertCircle, CheckCircle2, Building2, Sun, Moon } from "lucide-react";
 import api from "../services/api";
 
 export default function VerifyOTP() {
   const navigate = useNavigate();
+
+  // Dark / Light Theme System
+  const [theme, setTheme] = useState(() => {
+    return localStorage.getItem("portal_theme") || "light";
+  });
+
+  useEffect(() => {
+    document.documentElement.setAttribute("data-theme", theme);
+    localStorage.setItem("portal_theme", theme);
+  }, [theme]);
+
+  const toggleTheme = () => {
+    setTheme((prev) => (prev === "dark" ? "light" : "dark"));
+  };
 
   const registrationData = JSON.parse(localStorage.getItem("studentRegistration") || "null");
 
@@ -98,6 +112,19 @@ export default function VerifyOTP() {
 
   return (
     <div className="auth-page-container">
+      {/* Floating Dark / Light Theme Toggle */}
+      <div className="auth-theme-floating">
+        <button
+          type="button"
+          className="btn-theme-toggle"
+          onClick={toggleTheme}
+          title={`Switch to ${theme === "dark" ? "Light" : "Dark"} Mode`}
+        >
+          {theme === "dark" ? <Sun size={17} className="text-amber" /> : <Moon size={17} />}
+          <span>{theme === "dark" ? "Light" : "Dark"}</span>
+        </button>
+      </div>
+
       <div className="auth-bg-decorations">
         <div className="decor-circle circle-1"></div>
         <div className="decor-circle circle-2"></div>
@@ -176,9 +203,9 @@ export default function VerifyOTP() {
             </div>
 
             {backupOtp && (
-              <div style={{ marginTop: '10px', fontSize: '12px', color: '#64748b', textAlign: 'center', background: '#f8fafc', padding: '6px 12px', borderRadius: '6px', border: '1px dashed #cbd5e1' }}>
+              <div className="backup-otp-banner">
                 <span>Institutional email delayed? Code: </span>
-                <strong style={{ color: '#1e3a8a', letterSpacing: '2px', fontSize: '13px' }}>{backupOtp}</strong>
+                <strong className="backup-otp-code">{backupOtp}</strong>
               </div>
             )}
           </div>
