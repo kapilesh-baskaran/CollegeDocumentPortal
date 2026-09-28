@@ -101,12 +101,13 @@ export default function VerifyOTP() {
       <div className="auth-bg-decorations">
         <div className="decor-circle circle-1"></div>
         <div className="decor-circle circle-2"></div>
+        <div className="decor-circle circle-3"></div>
       </div>
 
-      <div className="auth-card-wrapper">
+      <div className="auth-card-wrapper glass-card animate-fadeInUp">
         <div className="auth-header">
-          <div className="college-crest-badge">
-            <Building2 size={24} className="text-white" />
+          <div className="auth-logo-badge">
+            <img src="/psna-logo.png" alt="PSNA College of Engineering & Technology" className="auth-college-logo" />
           </div>
           <h1 className="auth-title">Verify Email OTP</h1>
           <p className="auth-subtitle">

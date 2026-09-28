@@ -112,7 +112,7 @@ export default function DocumentModal({ isOpen, onClose, request, student }) {
             {/* Certificate Header */}
             <div className="cert-header">
               <div className="cert-emblem-seal">
-                <div className="seal-emblem">PSNA</div>
+                <img src="/psna-logo.png" alt="PSNA College Crest" className="cert-sheet-psna-logo" />
               </div>
               <div className="cert-college-details">
                 <h1 className="cert-college-title">

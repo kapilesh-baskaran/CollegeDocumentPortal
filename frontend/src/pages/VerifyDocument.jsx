@@ -41,8 +41,8 @@ export default function VerifyDocument() {
       <header className="portal-header">
         <div className="header-container">
           <div className="portal-brand">
-            <div className="brand-crest">
-              <Building2 size={24} className="text-white" />
+            <div className="navbar-logo-badge verify-logo-badge">
+              <img src="/psna-logo.png" alt="PSNA College" className="navbar-college-logo" />
             </div>
             <div>
               <h1 className="brand-title">PSNA College of Engineering and Technology</h1>

@@ -146,13 +146,14 @@ export default function Login() {
       <div className="auth-bg-decorations">
         <div className="decor-circle circle-1"></div>
         <div className="decor-circle circle-2"></div>
+        <div className="decor-circle circle-3"></div>
       </div>
 
-      <div className="auth-card-wrapper">
+      <div className="auth-card-wrapper glass-card animate-fadeInUp">
         {/* College Header */}
         <div className="auth-header">
-          <div className="college-crest-badge">
-            <span className="crest-initials">PSNA</span>
+          <div className="auth-logo-badge">
+            <img src="/psna-logo.png" alt="PSNA College of Engineering & Technology" className="auth-college-logo" />
           </div>
           <h1 className="auth-title">College Document Portal</h1>
           <p className="auth-subtitle">

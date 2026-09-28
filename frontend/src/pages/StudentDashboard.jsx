@@ -329,13 +329,13 @@ export default function StudentDashboard() {
   return (
     <div className="portal-layout">
       {/* Top Navigation Bar */}
-      <header className="portal-navbar">
+      <header className="portal-navbar glass-navbar">
         <div className="navbar-left">
-          <div className="navbar-brand-badge">
-            <Building2 size={20} className="text-white" />
+          <div className="navbar-logo-badge">
+            <img src="/psna-logo.png" alt="PSNA College Logo" className="navbar-college-logo" />
           </div>
           <div>
-            <h2 className="navbar-brand-title">PSNA College Document Portal</h2>
+            <h2 className="navbar-brand-title">College Document Portal</h2>
             <span className="navbar-brand-sub">Student Self-Service Requisition System</span>
           </div>
         </div>
