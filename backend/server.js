@@ -1,6 +1,7 @@
 const express = require("express");
 const cors = require("cors");
 const pool = require("./database");
+const initDB = require("./initDb");
 const studentRoutes = require("./routes/studentRoutes");
 const documentRoutes = require("./routes/documentRoutes");
 const adminRoutes = require("./routes/adminRoutes");
@@ -27,22 +28,29 @@ app.get("/verify/:requestId", (req, res) => {
 app.get("/test-db", async (req, res) => {
   try {
     const result = await pool.query("SELECT NOW()");
+    const tablesRes = await pool.query(
+      "SELECT table_name FROM information_schema.tables WHERE table_schema = 'public'"
+    );
 
     res.json({
       message: "Neon PostgreSQL connected successfully!",
-      time: result.rows[0].now
+      time: result.rows[0].now,
+      tables: tablesRes.rows.map((r) => r.table_name)
     });
   } catch (error) {
-    console.error(error);
+    console.error("Database connection test error:", error);
 
     res.status(500).json({
-      message: "Database connection failed"
+      message: "Database connection failed",
+      error: error.message
     });
   }
 });
 
 const PORT = process.env.PORT || 5000;
 
-app.listen(PORT, () => {
+app.listen(PORT, async () => {
   console.log(`Server running on port ${PORT}`);
+  // Initialize database tables and initial records
+  await initDB();
 });
